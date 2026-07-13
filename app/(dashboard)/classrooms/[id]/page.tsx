@@ -18,7 +18,9 @@ import { ScoresTab } from "@/components/classrooms/scores-tab";
 import { StudentsTab } from "@/components/classrooms/students-tab";
 import { InfoTab } from "@/components/classrooms/info-tab";
 import { HistoryTab } from "@/components/classrooms/history-tab";
+import { GradesTab } from "@/components/classrooms/grades-tab";
 import { Button } from "@/components/ui/button";
+import { Calculator } from "lucide-react";
 
 export default function ClassroomDetailPage() {
   const params = useParams();
@@ -31,7 +33,7 @@ export default function ClassroomDetailPage() {
   const classroom = classrooms.find((c) => c.id === id);
   const subject = subjects.find((s) => s.id === classroom?.subjectId);
 
-  const [activeTab, setActiveTab] = useState<"attendance" | "scores" | "students" | "info" | "history">("attendance");
+  const [activeTab, setActiveTab] = useState<"attendance" | "scores" | "grades" | "students" | "info" | "history">("attendance");
 
   if (!isLoaded) {
     return (
@@ -94,6 +96,17 @@ export default function ClassroomDetailPage() {
           {t("scoresTab")}
         </button>
         <button
+          onClick={() => setActiveTab("grades")}
+          className={`flex items-center gap-2 px-5 py-3 border-b-2 font-bold text-sm shrink-0 transition-all cursor-pointer ${
+            activeTab === "grades"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Calculator className="h-4.5 w-4.5" />
+          {language === "th" ? "สรุปเกรด" : "Grades"}
+        </button>
+        <button
           onClick={() => setActiveTab("students")}
           className={`flex items-center gap-2 px-5 py-3 border-b-2 font-bold text-sm shrink-0 transition-all cursor-pointer ${
             activeTab === "students"
@@ -132,6 +145,7 @@ export default function ClassroomDetailPage() {
       <div className="mt-6">
         {activeTab === "attendance" && <AttendanceTab classroomId={id} />}
         {activeTab === "scores" && <ScoresTab classroomId={id} />}
+        {activeTab === "grades" && <GradesTab classroomId={id} />}
         {activeTab === "students" && <StudentsTab classroomId={id} />}
         {activeTab === "history" && <HistoryTab classroomId={id} />}
         {activeTab === "info" && <InfoTab classroomId={id} />}

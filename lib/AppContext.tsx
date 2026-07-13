@@ -24,6 +24,7 @@ export interface Classroom {
   name: string;
   subjectId: string;
   description?: string;
+  gradeThresholds?: { grade4: number; grade3: number; grade2: number; grade1: number };
 }
 
 export interface Student {
@@ -75,6 +76,7 @@ interface AppContextType {
   // Classroom Actions
   addClassroom: (name: string, subjectId: string, description?: string) => void;
   updateClassroom: (id: string, name: string, description?: string) => void;
+  updateClassroomGradeSettings: (id: string, thresholds: { grade4: number; grade3: number; grade2: number; grade1: number }) => void;
   deleteClassroom: (id: string) => void;
 
   // Student Actions
@@ -308,6 +310,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setClassrooms(prev => prev.map(c => c.id === id ? { ...c, name, description } : c));
   };
 
+  const updateClassroomGradeSettings = (id: string, thresholds: { grade4: number; grade3: number; grade2: number; grade1: number }) => {
+    setClassrooms(prev => prev.map(c => c.id === id ? { ...c, gradeThresholds: thresholds } : c));
+  };
+
   const deleteClassroom = (id: string) => {
     setClassrooms(prev => prev.filter(c => c.id !== id));
     setStudents(prev => prev.filter(s => s.classroomId !== id));
@@ -409,6 +415,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteSubject,
         addClassroom,
         updateClassroom,
+        updateClassroomGradeSettings,
         deleteClassroom,
         addStudent,
         addStudentsBatch,
