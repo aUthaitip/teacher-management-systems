@@ -17,8 +17,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -27,11 +28,44 @@ export default function LoginPage() {
       return;
     }
 
-    const success = loginTeacher(email, password);
-    if (success) {
-      router.push("/dashboard");
-    } else {
-      setError(t("loginErrorInvalid"));
+    setLoading(true);
+    try {
+      const { db } = await import("@/lib/firebase");
+      const { collection, query, where, getDocs } = await import("firebase/firestore");
+      
+      const q = query(collection(db, "users"), where("email", "==", email), where("password", "==", password));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        setError(t("loginErrorInvalid"));
+        setLoading(false);
+      } else {
+        const userData = snapshot.docs[0].data();
+        
+        // Force sync with local context so the rest of the app works
+        // Try to login first, if it fails, it means the user was registered on another device
+        // so we register them locally then login
+        const success = loginTeacher(email, password);
+        if (!success) {
+          // Login failed to sync with local context. Continue by saving current teacher data directly.
+        }
+        
+        // Save directly to localStorage to bypass local array issues
+        const teacherData = {
+          id: snapshot.docs[0].id,
+          name: userData.name,
+          email: userData.email,
+          school: userData.school
+        };
+        localStorage.setItem("tms_currentTeacher", JSON.stringify(teacherData));
+        
+        // Force refresh to dashboard to load the new context
+        window.location.href = "/dashboard";
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Error connecting to database");
+      setLoading(false);
     }
   };
 
@@ -94,10 +128,17 @@ export default function LoginPage() {
 
         <Button
           type="submit"
-          className="w-full bg-black hover:bg-zinc-800 text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2 h-11 cursor-pointer"
+          disabled={loading}
+          className="w-full bg-black hover:bg-zinc-800 text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2 h-11 cursor-pointer disabled:opacity-50"
         >
-          <LogIn className="h-5 w-5" />
-          {t("login")}
+          {loading ? (
+            <span className="animate-pulse">{language === "th" ? "กำลังประมวลผล..." : "Processing..."}</span>
+          ) : (
+            <>
+              <LogIn className="h-5 w-5" />
+              {t("login")}
+            </>
+          )}
         </Button>
       </form>
 

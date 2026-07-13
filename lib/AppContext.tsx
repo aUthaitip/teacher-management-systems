@@ -79,6 +79,7 @@ interface AppContextType {
 
   // Student Actions
   addStudent: (name: string, rollNumber: string, classroomId: string) => void;
+  addStudentsBatch: (students: { name: string; rollNumber: string }[], classroomId: string) => void;
   updateStudent: (id: string, name: string, rollNumber: string) => void;
   deleteStudent: (id: string) => void;
 
@@ -237,6 +238,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCurrentTeacher(null);
       localStorage.removeItem("tms_currentTeacher");
     }
+
+    // Cascade delete all data related to this teacher
+    setSubjects(prev => {
+      const teacherSubjects = prev.filter(s => s.teacherIds.includes(id));
+      const subjIdsToRemove = teacherSubjects.map(s => s.id);
+      
+      if (subjIdsToRemove.length === 0) return prev;
+
+      // Keep only subjects that don't belong to the deleted teacher
+      const remainingSubjects = prev.filter(s => !subjIdsToRemove.includes(s.id));
+
+      setClassrooms(prevClassrooms => {
+        const classroomsToRemove = prevClassrooms.filter(c => subjIdsToRemove.includes(c.subjectId));
+        const classIdsToRemove = classroomsToRemove.map(c => c.id);
+
+        if (classIdsToRemove.length > 0) {
+          // Remove students, attendance, and scores for these classrooms
+          setStudents(prevStudents => prevStudents.filter(st => !classIdsToRemove.includes(st.classroomId)));
+          setAttendance(prevAtt => prevAtt.filter(a => !classIdsToRemove.includes(a.classroomId)));
+          setScores(prevScores => prevScores.filter(sc => !classIdsToRemove.includes(sc.classroomId)));
+        }
+
+        return prevClassrooms.filter(c => !classIdsToRemove.includes(c.id));
+      });
+
+      return remainingSubjects;
+    });
   };
 
   // Subject Actions
@@ -290,12 +318,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Student Actions
   const addStudent = (name: string, rollNumber: string, classroomId: string) => {
     const newStudent: Student = {
-      id: `stud-${Date.now()}`,
+      id: `stud-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name,
       rollNumber,
       classroomId,
     };
     setStudents(prev => [...prev, newStudent]);
+  };
+
+  const addStudentsBatch = (batch: { name: string; rollNumber: string }[], classroomId: string) => {
+    const newStudents: Student[] = batch.map(b => ({
+      id: `stud-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: b.name,
+      rollNumber: b.rollNumber,
+      classroomId,
+    }));
+    setStudents(prev => [...prev, ...newStudents]);
   };
 
   const updateStudent = (id: string, name: string, rollNumber: string) => {
@@ -373,6 +411,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateClassroom,
         deleteClassroom,
         addStudent,
+        addStudentsBatch,
         updateStudent,
         deleteStudent,
         saveAttendance,

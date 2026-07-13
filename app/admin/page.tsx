@@ -26,7 +26,7 @@ interface FirebaseUser {
 }
 
 export default function AdminPage() {
-  const { deleteTeacher, currentTeacher, subjects, classrooms, students, isLoaded } = useApp();
+  const { deleteTeacher, currentTeacher, teachers, subjects, classrooms, students, isLoaded } = useApp();
   const { language, toggleLanguage } = useLanguage();
 
   const [firebaseTeachers, setFirebaseTeachers] = useState<FirebaseUser[]>([]);
@@ -146,13 +146,45 @@ export default function AdminPage() {
 
           <Card className="bg-white border-zinc-200 text-foreground shadow-sm">
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <BookOpen className="h-5 w-5 text-zinc-400" />
-                <span className="text-2xl font-black">{subjects.length}</span>
+              <div className="flex justify-between items-start">
+                <div className="flex items-center justify-between w-full">
+                  <BookOpen className="h-5 w-5 text-zinc-400" />
+                  <span className="text-2xl font-black">{subjects.length}</span>
+                </div>
               </div>
-              <h4 className="text-xs font-bold text-zinc-500 mt-4 uppercase">
-                {language === "th" ? "วิชาเรียนทั้งหมดในระบบ" : "Total System Subjects"}
-              </h4>
+              <div className="flex flex-col gap-2 mt-4">
+                <h4 className="text-xs font-bold text-zinc-500 uppercase">
+                  {language === "th" ? "วิชาเรียนทั้งหมดในระบบ" : "Total System Subjects"}
+                </h4>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-[10px] h-6 py-0 px-2 w-fit text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-100 mt-1"
+                  onClick={() => {
+                    if (window.confirm("ต้องการลบข้อมูลวิชาและห้องเรียนที่ตกค้างจากครูที่ถูกลบไปแล้วใช่หรือไม่?")) {
+                      const validTeacherIds = new Set(firebaseTeachers.map(t => t.id));
+                      
+                      const lsSubjects = JSON.parse(localStorage.getItem("tms_subjects") || "[]");
+                      const cleanSubjects = lsSubjects.filter((s: any) => s.teacherIds.some((id: string) => validTeacherIds.has(id)));
+                      localStorage.setItem("tms_subjects", JSON.stringify(cleanSubjects));
+                      
+                      const lsClassrooms = JSON.parse(localStorage.getItem("tms_classrooms") || "[]");
+                      const cleanSubjIds = new Set(cleanSubjects.map((s: any) => s.id));
+                      const cleanClassrooms = lsClassrooms.filter((c: any) => cleanSubjIds.has(c.subjectId));
+                      localStorage.setItem("tms_classrooms", JSON.stringify(cleanClassrooms));
+                      
+                      const lsStudents = JSON.parse(localStorage.getItem("tms_students") || "[]");
+                      const cleanClassIds = new Set(cleanClassrooms.map((c: any) => c.id));
+                      const cleanStudents = lsStudents.filter((st: any) => cleanClassIds.has(st.classroomId));
+                      localStorage.setItem("tms_students", JSON.stringify(cleanStudents));
+                      
+                      window.location.reload();
+                    }
+                  }}
+                >
+                  {language === "th" ? "เคลียร์วิชาตกค้าง" : "Clear Orphaned"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -223,7 +255,12 @@ export default function AdminPage() {
                   </TableRow>
                 ) : firebaseTeachers.map((teacher) => {
                   // Calculate statistics based on real relations
-                  const teacherSubjects = subjects.filter(s => s.teacherIds.includes(teacher.id));
+                  // Fallback: match by local ID if they created subjects before Firebase ID migration
+                  const localTeacher = teachers.find(t => t.email.toLowerCase() === teacher.email.toLowerCase());
+                  const possibleIds = [teacher.id];
+                  if (localTeacher) possibleIds.push(localTeacher.id);
+
+                  const teacherSubjects = subjects.filter(s => s.teacherIds.some(id => possibleIds.includes(id)));
                   const teacherSubjIds = teacherSubjects.map(s => s.id);
                   const teacherClassrooms = classrooms.filter(c => teacherSubjIds.includes(c.subjectId));
                   const teacherClassroomIds = teacherClassrooms.map(c => c.id);

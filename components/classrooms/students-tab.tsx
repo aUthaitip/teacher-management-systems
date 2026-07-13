@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useApp, Student } from "@/lib/AppContext";
 import { useLanguage } from "@/lib/LanguageContext";
-import { Plus, Trash2, Edit, UserPlus, Users } from "lucide-react";
+import { Plus, Trash2, Edit, UserPlus, Users, Upload, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -22,12 +23,61 @@ interface StudentsTabProps {
 }
 
 export function StudentsTab({ classroomId }: StudentsTabProps) {
-  const { students, addStudent, updateStudent, deleteStudent, isLoaded } = useApp();
-  const { t } = useLanguage();
+  const { students, addStudent, addStudentsBatch, updateStudent, deleteStudent, isLoaded } = useApp();
+  const { language, t } = useLanguage();
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [studentName, setStudentName] = useState("");
   const [studentRoll, setStudentRoll] = useState("");
   const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const data = classroomStudents.map(s => ({
+      "เลขที่": s.rollNumber,
+      "ชื่อ-นามสกุล": s.name
+    }));
+    if (data.length === 0) {
+      data.push({ "เลขที่": "1", "ชื่อ-นามสกุล": "ชื่อ นามสกุล ตัวอย่าง" });
+    }
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+    XLSX.writeFile(workbook, `รายชื่อนักเรียน_${classroomId}.xlsx`);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        const newStudents = data.map((row: any) => {
+          const rollNumber = row["เลขที่"] || row["No"] || row["Roll"] || row["เลขประจำตัว"] || "";
+          const name = row["ชื่อ-นามสกุล"] || row["ชื่อ"] || row["Name"] || row["Fullname"] || "";
+          return { rollNumber: String(rollNumber), name: String(name) };
+        }).filter(s => s.name && s.rollNumber);
+
+        if (newStudents.length > 0) {
+          addStudentsBatch(newStudents, classroomId);
+          alert(language === "th" ? `นำเข้าสำเร็จ ${newStudents.length} รายการ` : `Imported ${newStudents.length} students successfully`);
+        } else {
+          alert(language === "th" ? "ไม่พบข้อมูลนักเรียนในไฟล์ (กรุณาใช้คอลัมน์ 'เลขที่' และ 'ชื่อ-นามสกุล')" : "No valid data found (use 'เลขที่' and 'ชื่อ-นามสกุล' columns)");
+        }
+      } catch (err) {
+        console.error(err);
+        alert(language === "th" ? "เกิดข้อผิดพลาดในการอ่านไฟล์" : "Error reading file");
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsBinaryString(file);
+  };
 
   const classroomStudents = students
     .filter((s) => s.classroomId === classroomId)
@@ -66,11 +116,38 @@ export function StudentsTab({ classroomId }: StudentsTabProps) {
           <CardDescription className="text-sm text-muted-foreground">{t("studentRegistersDesc")}</CardDescription>
         </div>
         
-        <Dialog open={isStudentModalOpen} onOpenChange={setIsStudentModalOpen}>
-          <DialogTrigger className="flex h-8 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer shadow">
-            <UserPlus className="h-4 w-4 mr-1" />
-            {t("addStudentBtn")}
-          </DialogTrigger>
+        <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
+          <input 
+            type="file" 
+            accept=".xlsx, .xls, .csv" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleImport} 
+          />
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExport}
+            className="h-8 text-xs font-bold shadow-sm"
+          >
+            <Download className="h-3.5 w-3.5 mr-1" />
+            {language === "th" ? "ส่งออก" : "Export"}
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="h-8 text-xs font-bold shadow-sm"
+          >
+            <Upload className="h-3.5 w-3.5 mr-1" />
+            {language === "th" ? "นำเข้า" : "Import"}
+          </Button>
+
+          <Dialog open={isStudentModalOpen} onOpenChange={setIsStudentModalOpen}>
+            <DialogTrigger className="flex h-8 items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer shadow">
+              <UserPlus className="h-4 w-4 mr-1" />
+              {t("addStudentBtn")}
+            </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold flex items-center gap-2">
@@ -116,7 +193,8 @@ export function StudentsTab({ classroomId }: StudentsTabProps) {
               </DialogFooter>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {classroomStudents.length === 0 ? (

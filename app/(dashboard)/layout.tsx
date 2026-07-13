@@ -13,14 +13,29 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const { currentTeacher, isLoaded } = useApp();
+  const { currentTeacher, isLoaded, logoutTeacher } = useApp();
   const router = useRouter();
 
   useEffect(() => {
     if (isLoaded && !currentTeacher) {
       router.push("/login");
+    } else if (isLoaded && currentTeacher) {
+      // Check Firebase to verify if the teacher was deleted by an admin
+      import("@/lib/firebase").then(({ db }) => {
+        import("firebase/firestore").then(({ collection, query, where, getDocs }) => {
+          const q = query(collection(db, "users"), where("email", "==", currentTeacher.email));
+          getDocs(q).then(snapshot => {
+            if (snapshot.empty) {
+              // The user was deleted from Firebase database!
+              alert("บัญชีของคุณถูกลบออกจากระบบโดยผู้ดูแลระบบ (Your account has been removed by admin)");
+              logoutTeacher();
+              router.push("/login");
+            }
+          });
+        });
+      });
     }
-  }, [isLoaded, currentTeacher, router]);
+  }, [isLoaded, currentTeacher, router, logoutTeacher]);
 
   if (!isLoaded || !currentTeacher) {
     return (
