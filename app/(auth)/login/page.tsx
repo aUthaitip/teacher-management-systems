@@ -23,7 +23,7 @@ export default function LoginPage() {
     setError("");
 
     if (!email || !password) {
-      setError(language === "th" ? "กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน" : "Please fill in email and password");
+      setError(t("loginErrorEmpty"));
       return;
     }
 
@@ -31,9 +31,7 @@ export default function LoginPage() {
     if (success) {
       router.push("/dashboard");
     } else {
-      setError(language === "th" 
-        ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง (สำหรับผู้ใช้เริ่มต้นใช้รหัสผ่าน: password123)" 
-        : "Invalid email or password (default password: password123)");
+      setError(t("loginErrorInvalid"));
     }
   };
 
@@ -47,7 +45,7 @@ export default function LoginPage() {
           {t("loginTitle")}
         </h1>
         <p className="text-sm text-zinc-500 mt-1">
-          {language === "th" ? "ระบบจัดการห้องเรียนและคะแนนนักเรียน" : "Classroom & student grade manager"}
+          {t("loginSubtitle")}
         </p>
       </div>
 

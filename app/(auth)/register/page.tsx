@@ -28,20 +28,20 @@ export default function RegisterPage() {
   // Zod schemas with bilingual error messages
   const registerSchema = z.object({
     name: z.string().min(2, { 
-      message: language === "th" ? "ชื่อ-นามสกุลต้องมีอย่างน้อย 2 ตัวอักษร" : "Name must be at least 2 characters" 
+      message: t("registerErrorName") 
     }),
     school: z.string().min(2, { 
-      message: language === "th" ? "ชื่อโรงเรียนต้องมีอย่างน้อย 2 ตัวอักษร" : "School name must be at least 2 characters" 
+      message: t("registerErrorSchool") 
     }),
     email: z.string().email({ 
-      message: language === "th" ? "รูปแบบอีเมลไม่ถูกต้อง" : "Invalid email address format" 
+      message: t("registerErrorEmail") 
     }),
     password: z.string().min(6, { 
-      message: language === "th" ? "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร" : "Password must be at least 6 characters" 
+      message: t("registerErrorPassword") 
     }),
   });
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -58,30 +58,49 @@ export default function RegisterPage() {
 
     setLoading(true);
     
-    // Simulate API delay for a polished UX
-    setTimeout(() => {
-      const isRegistered = registerTeacher(name, email, school, password);
+    try {
+      const { db } = await import("@/lib/firebase");
+      const { collection, addDoc, getDocs, query, where } = await import("firebase/firestore");
+      
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        setError(t("registerErrorExists"));
+        setLoading(false);
+        return;
+      }
+      
+      await addDoc(collection(db, "users"), {
+        name,
+        email,
+        school,
+        password,
+        createdAt: new Date().toISOString()
+      });
+      
+      registerTeacher(name, email, school, password);
+
       setLoading(false);
 
-      if (isRegistered) {
-        setSuccess(language === "th" 
-          ? "ลงทะเบียนสมาชิกสำเร็จ! กำลังพาท่านไปหน้าเข้าสู่ระบบ..." 
-          : "Registration successful! Redirecting you to login page...");
-        
-        // Clear inputs
-        setName("");
-        setEmail("");
-        setSchool("");
-        setPassword("");
+      setSuccess(t("registerSuccess"));
+      
+      // Clear inputs
+      setName("");
+      setEmail("");
+      setSchool("");
+      setPassword("");
 
-        // Redirect to Login Page after 2 seconds
-        setTimeout(() => {
-          router.push("/login");
-        }, 2200);
-      } else {
-        setError(language === "th" ? "อีเมลนี้มีผู้สมัครใช้งานแล้ว" : "Email already registered in this system.");
-      }
-    }, 800);
+      setTimeout(() => {
+        router.push("/login");
+      }, 2200);
+      
+    } catch (err) {
+      console.error(err);
+      setError("Error connecting to database");
+      setLoading(false);
+    }
   };
 
   return (
@@ -123,7 +142,7 @@ export default function RegisterPage() {
               type="text"
               disabled={loading || !!success}
               className="pl-9 h-11 text-zinc-900 bg-zinc-50/50"
-              placeholder={language === "th" ? "เช่น ครูวิทยากร ใจดี" : "e.g. John Doe"}
+              placeholder={t("registerNamePl")}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -140,7 +159,7 @@ export default function RegisterPage() {
               type="text"
               disabled={loading || !!success}
               className="pl-9 h-11 text-zinc-900 bg-zinc-50/50"
-              placeholder={language === "th" ? "เช่น โรงเรียนมัธยมวิทยา" : "e.g. High School"}
+              placeholder={t("registerSchoolPl")}
               value={school}
               onChange={(e) => setSchool(e.target.value)}
             />
@@ -174,7 +193,7 @@ export default function RegisterPage() {
               type="password"
               disabled={loading || !!success}
               className="pl-9 h-11 text-zinc-900 bg-zinc-50/50"
-              placeholder={language === "th" ? "อย่างน้อย 6 ตัวอักษร" : "At least 6 characters"}
+              placeholder={t("registerPasswordPl")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -187,7 +206,7 @@ export default function RegisterPage() {
           className="w-full bg-black hover:bg-zinc-800 text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2 h-11 cursor-pointer disabled:opacity-50"
         >
           {loading ? (
-            <span className="animate-pulse">{language === "th" ? "กำลังประมวลผล..." : "Processing..."}</span>
+            <span className="animate-pulse">{t("processing")}</span>
           ) : (
             <>
               <UserPlus className="h-5 w-5" />

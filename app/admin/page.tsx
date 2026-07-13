@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useApp } from "@/lib/AppContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
@@ -15,10 +15,56 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+
+interface FirebaseUser {
+  id: string;
+  name: string;
+  email: string;
+  school: string;
+}
 
 export default function AdminPage() {
-  const { teachers, deleteTeacher, currentTeacher, subjects, classrooms, students, isLoaded } = useApp();
+  const { deleteTeacher, currentTeacher, subjects, classrooms, students, isLoaded } = useApp();
   const { language, toggleLanguage } = useLanguage();
+
+  const [firebaseTeachers, setFirebaseTeachers] = useState<FirebaseUser[]>([]);
+  const [loadingFirebase, setLoadingFirebase] = useState(true);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "users"));
+        const usersList: FirebaseUser[] = [];
+        querySnapshot.forEach((docSnap) => {
+          usersList.push({ id: docSnap.id, ...docSnap.data() } as FirebaseUser);
+        });
+        setFirebaseTeachers(usersList);
+      } catch (err) {
+        console.error("Error fetching users from Firebase:", err);
+      } finally {
+        setLoadingFirebase(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  const handleDeleteTeacher = async (id: string, name: string) => {
+    const confirmText = language === "th"
+      ? `ต้องการลบครู "${name}" ออกจากระบบหรือไม่? (ครูจะไม่สามารถเข้าสู่ระบบได้อีก)`
+      : `Are you sure you want to delete teacher "${name}"? (They will be banned from logging in)`;
+    if (confirm(confirmText)) {
+      try {
+        await deleteDoc(doc(db, "users", id));
+        setFirebaseTeachers(prev => prev.filter(t => t.id !== id));
+        deleteTeacher(id); // Keep sync with local context if needed
+      } catch (err) {
+        console.error("Error deleting user:", err);
+        alert("Failed to delete user");
+      }
+    }
+  };
 
   if (!isLoaded) {
     return (
@@ -90,7 +136,7 @@ export default function AdminPage() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <Users className="h-5 w-5 text-zinc-400" />
-                <span className="text-2xl font-black">{teachers.length}</span>
+                <span className="text-2xl font-black">{firebaseTeachers.length}</span>
               </div>
               <h4 className="text-xs font-bold text-zinc-500 mt-4 uppercase">
                 {language === "th" ? "คุณครูสมัครใช้งานสะสม" : "Total Teachers"}
@@ -169,7 +215,13 @@ export default function AdminPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {teachers.map((teacher) => {
+                {loadingFirebase ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      {language === "th" ? "กำลังโหลดข้อมูล..." : "Loading data..."}
+                    </TableCell>
+                  </TableRow>
+                ) : firebaseTeachers.map((teacher) => {
                   // Calculate statistics based on real relations
                   const teacherSubjects = subjects.filter(s => s.teacherIds.includes(teacher.id));
                   const teacherSubjIds = teacherSubjects.map(s => s.id);
@@ -193,14 +245,7 @@ export default function AdminPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            const confirmText = language === "th"
-                              ? `ต้องการลบครู "${teacher.name}" ออกจากระบบหรือไม่? (ครูจะไม่สามารถเข้าสู่ระบบได้อีก)`
-                              : `Are you sure you want to delete teacher "${teacher.name}"? (They will be banned from logging in)`;
-                            if (confirm(confirmText)) {
-                              deleteTeacher(teacher.id);
-                            }
-                          }}
+                          onClick={() => handleDeleteTeacher(teacher.id, teacher.name)}
                           className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-md cursor-pointer"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -209,7 +254,7 @@ export default function AdminPage() {
                     </TableRow>
                   );
                 })}
-                {teachers.length === 0 && (
+                {!loadingFirebase && firebaseTeachers.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-sm text-muted-foreground italic">
                       {language === "th" ? "ไม่มีบัญชีครูลงทะเบียนในระบบในเบราว์เซอร์นี้" : "No teacher registry data detected."}

@@ -51,6 +51,21 @@ const translations: TranslationDictionary = {
   schoolLabel: { th: "โรงเรียน/สถานศึกษา (School)", en: "School / Institution" },
   alreadyHaveAccount: { th: "มีบัญชีผู้ใช้แล้ว?", en: "Already have an account?" },
   signInHere: { th: "เข้าสู่ระบบที่นี่", en: "Sign in here" },
+  
+  // Extra Login & Register
+  loginErrorEmpty: { th: "กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน", en: "Please fill in email and password" },
+  loginErrorInvalid: { th: "อีเมลหรือรหัสผ่านไม่ถูกต้อง", en: "Invalid email or password" },
+  loginSubtitle: { th: "ระบบจัดการห้องเรียนและคะแนนนักเรียน", en: "Classroom & student grade manager" },
+  registerErrorName: { th: "ชื่อ-นามสกุลต้องมีอย่างน้อย 2 ตัวอักษร", en: "Name must be at least 2 characters" },
+  registerErrorSchool: { th: "ชื่อโรงเรียนต้องมีอย่างน้อย 2 ตัวอักษร", en: "School name must be at least 2 characters" },
+  registerErrorEmail: { th: "รูปแบบอีเมลไม่ถูกต้อง", en: "Invalid email address format" },
+  registerErrorPassword: { th: "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร", en: "Password must be at least 6 characters" },
+  registerErrorExists: { th: "อีเมลนี้มีผู้สมัครใช้งานแล้ว", en: "Email already registered in this system." },
+  registerSuccess: { th: "ลงทะเบียนสมาชิกสำเร็จ! กำลังพาท่านไปหน้าเข้าสู่ระบบ...", en: "Registration successful! Redirecting you to login page..." },
+  registerNamePl: { th: "เช่น ครูวิทยากร ใจดี", en: "e.g. John Doe" },
+  registerSchoolPl: { th: "เช่น โรงเรียนมัธยมวิทยา", en: "e.g. High School" },
+  registerPasswordPl: { th: "อย่างน้อย 6 ตัวอักษร", en: "At least 6 characters" },
+  processing: { th: "กำลังประมวลผล...", en: "Processing..." },
 
   // Sidebar
   dashboard: { th: "แดชบอร์ด", en: "Dashboard" },
