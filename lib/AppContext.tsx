@@ -414,14 +414,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAttendance(prev => {
       // Filter out existing records for this date and classroom
       const filtered = prev.filter(a => !(a.date === date && a.classroomId === classroomId));
-      const newRecords: AttendanceRecord[] = records.map(r => ({
-        id: `att-${Date.now()}-${r.studentId}`,
-        date,
-        classroomId,
-        studentId: r.studentId,
-        status: r.status,
-        reason: r.reason,
-      }));
+      const newRecords: AttendanceRecord[] = records.map(r => {
+        const record: AttendanceRecord = {
+          id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${r.studentId}`,
+          date,
+          classroomId,
+          studentId: r.studentId,
+          status: r.status,
+        };
+        if (r.reason) {
+          record.reason = r.reason;
+        }
+        return record;
+      });
       return [...filtered, ...newRecords];
     });
   };

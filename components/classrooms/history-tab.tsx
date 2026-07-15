@@ -27,6 +27,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [selectedHistoryDate, setSelectedHistoryDate] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
 
   const classroomStudents = students
     .filter((s) => s.classroomId === classroomId)
@@ -34,19 +35,88 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
 
   const classroomAttendance = attendance.filter((a) => a.classroomId === classroomId);
 
+  const getTermFromDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1; // 1-12
+    
+    let term = 1;
+    let academicYear = year + 543; // Thai year
+    
+    // Term 1: May (5) to Oct (10)
+    // Term 2: Nov (11) to Apr (4)
+    if (month >= 5 && month <= 10) {
+      term = 1;
+    } else if (month >= 11 || month <= 4) {
+      term = 2;
+      if (month <= 4) academicYear -= 1; // Jan-Apr belongs to the previous academic year
+    }
+    
+    return {
+      label: language === "th" ? `ภาคเรียนที่ ${term}/${academicYear}` : `Term ${term}/${academicYear}`,
+      value: `${academicYear}-${term}` // For proper sorting
+    };
+  };
+
+  // Generate the last 4 terms as default options so the dropdown is always selectable
+  const generateRecentTerms = () => {
+    const terms = [];
+    const d = new Date();
+    let currentYear = d.getFullYear() + 543;
+    let currentMonth = d.getMonth() + 1;
+    
+    let startTerm = 1;
+    if (currentMonth >= 11 || currentMonth <= 4) {
+      startTerm = 2;
+      if (currentMonth <= 4) currentYear -= 1;
+    }
+    
+    for (let i = 0; i < 4; i++) {
+      let t = startTerm - (i % 2);
+      let y = currentYear - Math.floor(i / 2);
+      if (t <= 0) {
+        t += 2;
+        y -= 1;
+      }
+      terms.push({
+        label: language === "th" ? `ภาคเรียนที่ ${t}/${y}` : `Term ${t}/${y}`,
+        value: `${y}-${t}`
+      });
+    }
+    return terms;
+  };
+
+  // Get available terms (combine data terms and recent terms)
+  const dataTerms = classroomAttendance.map(a => getTermFromDate(a.date)).filter(t => t !== "");
+  const allTerms = [...generateRecentTerms(), ...dataTerms];
+  
+  // Deduplicate and sort chronologically (newest first)
+  const uniqueTermsMap = new Map();
+  allTerms.forEach(t => uniqueTermsMap.set(t.value, t.label));
+  
+  const availableTerms = Array.from(uniqueTermsMap.entries())
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => b.value.localeCompare(a.value))
+    .map(t => t.label);
+
+  const activeTerm = selectedTerm || (availableTerms.length > 0 ? availableTerms[0] : null);
+
+  // Filter attendance by selected term for overall stats
+  const termAttendance = activeTerm 
+    ? classroomAttendance.filter(a => getTermFromDate(a.date).label === activeTerm)
+    : classroomAttendance;
+
   // Get list of unique dates sorted descending
   const attendanceDates = Array.from(new Set(classroomAttendance.map((a) => a.date))).sort(
     (a, b) => new Date(b).getTime() - new Date(a).getTime()
   );
-
-  // Default to the most recent date if not selected
-  if (!selectedHistoryDate && attendanceDates.length > 0) {
-    setSelectedHistoryDate(attendanceDates[0]);
-  }
+  
+  const activeHistoryDate = selectedHistoryDate || (attendanceDates.length > 0 ? attendanceDates[0] : null);
 
   // Calculate statistics per student
   const studentStats = classroomStudents.map((student) => {
-    const studentRecords = classroomAttendance.filter((a) => a.studentId === student.id);
+    const studentRecords = termAttendance.filter((a) => a.studentId === student.id);
     const present = studentRecords.filter((r) => r.status === "present").length;
     const absent = studentRecords.filter((r) => r.status === "absent").length;
     const late = studentRecords.filter((r) => r.status === "late").length;
@@ -70,15 +140,12 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
 
   // Get list of available months
   const availableMonths = Array.from(new Set(classroomAttendance.map(a => a.date.substring(0, 7)))).sort().reverse();
-
-  // If no selected month, default to the most recent one
-  if (!selectedMonth && availableMonths.length > 0) {
-    setSelectedMonth(availableMonths[0]);
-  }
+  
+  const activeMonth = selectedMonth || (availableMonths.length > 0 ? availableMonths[0] : null);
 
   let pieData: any[] = [];
-  if (selectedMonth) {
-    const monthRecords = classroomAttendance.filter(a => a.date.startsWith(selectedMonth));
+  if (activeMonth) {
+    const monthRecords = classroomAttendance.filter(a => a.date.startsWith(activeMonth));
     const totalP = monthRecords.filter(a => a.status === "present").length;
     const totalL = monthRecords.filter(a => a.status === "late").length;
     const totalA = monthRecords.filter(a => a.status === "absent").length;
@@ -144,16 +211,27 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
 
         {/* Right Card: Overall stats table */}
         <Card className="bg-card border shadow-sm md:col-span-2">
-          <CardHeader className="p-5 border-b flex flex-row items-center justify-between">
+          <CardHeader className="p-5 border-b flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-sm font-bold flex items-center gap-1.5">
                 <BarChart3 className="h-4.5 w-4.5" />
                 {language === "th" ? "สถิติการเข้าเรียนของนักเรียนทุกคน" : "Individual Attendance Stats"}
               </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                {language === "th" ? "สรุปยอด มาเรียน สาย ขาด ของภาคเรียนนี้" : "Tally of presents, lates, and absences"}
+              <CardDescription className="text-xs text-muted-foreground mt-1">
+                {language === "th" ? "สรุปยอด มาเรียน สาย ขาด ประจำภาคเรียน" : "Tally of presents, lates, and absences for the term"}
               </CardDescription>
             </div>
+            {availableTerms.length > 0 && (
+              <select
+                className="border border-border bg-card text-foreground rounded-md px-3 py-1.5 text-sm font-bold shadow-sm"
+                value={activeTerm || ""}
+                onChange={(e) => setSelectedTerm(e.target.value)}
+              >
+                {availableTerms.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            )}
           </CardHeader>
           <CardContent className="p-0">
             {studentStats.length === 0 ? (
@@ -207,7 +285,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
           {availableMonths.length > 0 && (
             <select
               className="border border-border bg-card text-foreground rounded-md px-3 py-1.5 text-sm font-bold shadow-sm"
-              value={selectedMonth || ""}
+              value={activeMonth || ""}
               onChange={(e) => setSelectedMonth(e.target.value)}
             >
               {availableMonths.map(m => (
@@ -275,7 +353,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
                       // We still want to show the student breakdown table below the chart
                       // So calculate monthStudentStats just for the table
                       const monthStudentStats = classroomStudents.map(student => {
-                        const sRecords = classroomAttendance.filter((r: any) => r.studentId === student.id && r.date.startsWith(selectedMonth));
+                        const sRecords = classroomAttendance.filter((r: any) => r.studentId === student.id && r.date.startsWith(activeMonth!));
                         return { 
                           id: student.id,
                           name: student.name, 
@@ -320,13 +398,13 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
             <input 
               type="date"
               className="border border-border bg-card text-foreground rounded-md px-3 py-1.5 text-sm font-bold shadow-sm"
-              value={selectedHistoryDate || ""}
+              value={activeHistoryDate || ""}
               onChange={(e) => setSelectedHistoryDate(e.target.value)}
             />
             {attendanceDates.length > 0 && (
               <select
                 className="border border-border bg-card text-foreground rounded-md px-3 py-1.5 text-sm font-bold shadow-sm"
-                value={selectedHistoryDate || ""}
+                value={activeHistoryDate || ""}
                 onChange={(e) => setSelectedHistoryDate(e.target.value)}
               >
                 {attendanceDates.map(d => (
@@ -337,18 +415,18 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
           </div>
         </CardHeader>
         <CardContent className="p-4 space-y-3">
-          {!selectedHistoryDate || !attendanceDates.includes(selectedHistoryDate) ? (
+          {!activeHistoryDate || !attendanceDates.includes(activeHistoryDate) ? (
             <p className="text-center py-8 text-sm text-muted-foreground italic">
               {language === "th" ? "ไม่พบข้อมูลการเช็กชื่อในวันที่เลือก" : "No attendance records found for the selected date."}
             </p>
           ) : (
-            selectedHistoryDate && (
+            activeHistoryDate && (
               <div className="border rounded-xl bg-card overflow-hidden transition-all shadow-xs animate-fadeIn">
                 <div className="flex items-center justify-between p-4 bg-muted/10 border-b border-border">
                   <div className="flex items-center gap-2.5">
                     <CalendarDays className="h-4.5 w-4.5 text-muted-foreground" />
                     <span className="font-bold text-sm text-foreground">
-                      {language === "th" ? `ข้อมูลวันที่: ${selectedHistoryDate}` : `Date: ${selectedHistoryDate}`}
+                      {language === "th" ? `ข้อมูลวันที่: ${activeHistoryDate}` : `Date: ${activeHistoryDate}`}
                     </span>
                   </div>
 
@@ -356,13 +434,13 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
                     {/* Count Overview Badges */}
                     <div className="flex gap-2">
                       <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-bold text-[10px]">
-                        {language === "th" ? "มา" : "P"} {classroomAttendance.filter(a => a.date === selectedHistoryDate && a.status === "present").length}
+                        {language === "th" ? "มา" : "P"} {classroomAttendance.filter(a => a.date === activeHistoryDate && a.status === "present").length}
                       </Badge>
                       <Badge className="bg-amber-500/10 text-amber-600 border-none font-bold text-[10px]">
-                        {language === "th" ? "สาย" : "L"} {classroomAttendance.filter(a => a.date === selectedHistoryDate && a.status === "late").length}
+                        {language === "th" ? "สาย" : "L"} {classroomAttendance.filter(a => a.date === activeHistoryDate && a.status === "late").length}
                       </Badge>
                       <Badge className="bg-rose-500/10 text-rose-600 border-none font-bold text-[10px]">
-                        {language === "th" ? "ขาด" : "A"} {classroomAttendance.filter(a => a.date === selectedHistoryDate && a.status === "absent").length}
+                        {language === "th" ? "ขาด" : "A"} {classroomAttendance.filter(a => a.date === activeHistoryDate && a.status === "absent").length}
                       </Badge>
                     </div>
                   </div>
@@ -379,7 +457,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
                     </TableHeader>
                     <TableBody>
                       {classroomStudents.map((st) => {
-                        const rec = classroomAttendance.find((r) => r.studentId === st.id && r.date === selectedHistoryDate);
+                        const rec = classroomAttendance.find((r) => r.studentId === st.id && r.date === activeHistoryDate);
                         const status = rec ? rec.status : "present";
                         return (
                           <TableRow key={st.id} className="hover:bg-transparent">

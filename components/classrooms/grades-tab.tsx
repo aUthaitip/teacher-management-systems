@@ -55,11 +55,80 @@ export function GradesTab({ classroomId }: GradesTabProps) {
     }
   }, [classroom]);
 
+  const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
+
+  const getTermFromTimestamp = (timestamp: number) => {
+    const d = new Date(timestamp);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    let term = 1;
+    let academicYear = year + 543;
+    if (month >= 5 && month <= 10) {
+      term = 1;
+    } else if (month >= 11 || month <= 4) {
+      term = 2;
+      if (month <= 4) academicYear -= 1; 
+    }
+    return {
+      label: language === "th" ? `ภาคเรียนที่ ${term}/${academicYear}` : `Term ${term}/${academicYear}`,
+      value: `${academicYear}-${term}` 
+    };
+  };
+
   const classroomStudents = students
     .filter((s) => s.classroomId === classroomId)
     .sort((a, b) => Number(a.rollNumber) - Number(b.rollNumber));
 
-  const classroomChapters = scores.filter((s) => s.classroomId === classroomId);
+  const allClassroomChapters = scores.filter((s) => s.classroomId === classroomId);
+
+  // Generate recent default terms (last 4 terms)
+  const generateRecentTerms = () => {
+    const terms = [];
+    const d = new Date();
+    let currentYear = d.getFullYear() + 543;
+    let currentMonth = d.getMonth() + 1;
+    let startTerm = 1;
+    if (currentMonth >= 11 || currentMonth <= 4) {
+      startTerm = 2;
+      if (currentMonth <= 4) currentYear -= 1;
+    }
+    for (let i = 0; i < 4; i++) {
+      let t = startTerm - (i % 2);
+      let y = currentYear - Math.floor(i / 2);
+      if (t <= 0) { t += 2; y -= 1; }
+      terms.push({ label: language === "th" ? `ภาคเรียนที่ ${t}/${y}` : `Term ${t}/${y}`, value: `${y}-${t}` });
+    }
+    return terms;
+  };
+
+  // Get available terms from chapters
+  const chapterTerms = allClassroomChapters.map(ch => {
+    const parts = ch.id.split('-');
+    const ts = parseInt(parts[1], 10);
+    return isNaN(ts) ? getTermFromTimestamp(Date.now()) : getTermFromTimestamp(ts);
+  });
+
+  const allTerms = [...generateRecentTerms(), ...chapterTerms];
+  const uniqueTermsMap = new Map();
+  allTerms.forEach(t => uniqueTermsMap.set(t.value, t.label));
+  
+  const availableTerms = Array.from(uniqueTermsMap.entries())
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) => b.value.localeCompare(a.value))
+    .map(t => t.label);
+
+  const activeTerm = selectedTerm || (availableTerms.length > 0 ? availableTerms[0] : null);
+
+  // Filter chapters by term
+  const classroomChapters = activeTerm
+    ? allClassroomChapters.filter(ch => {
+        const parts = ch.id.split('-');
+        const ts = parseInt(parts[1], 10);
+        const term = isNaN(ts) ? getTermFromTimestamp(Date.now()) : getTermFromTimestamp(ts);
+        return term.label === activeTerm;
+      })
+    : allClassroomChapters;
+
   const maxPossibleScore = classroomChapters.reduce((sum, ch) => sum + ch.totalScore, 0);
 
   // Calculate total score per student
@@ -190,14 +259,27 @@ export function GradesTab({ classroomId }: GradesTabProps) {
           </CardDescription>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2">
-          <input 
-            type="file" 
-            accept=".xlsx, .xls, .csv" 
-            className="hidden" 
-            ref={fileInputRef} 
-            onChange={handleImport} 
-          />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {availableTerms.length > 0 && (
+            <select
+              className="border border-border bg-card text-foreground rounded-md px-3 py-1.5 text-sm font-bold shadow-sm"
+              value={activeTerm || ""}
+              onChange={(e) => setSelectedTerm(e.target.value)}
+            >
+              {availableTerms.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          )}
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <input 
+              type="file" 
+              accept=".xlsx, .xls, .csv" 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleImport} 
+            />
           {/* <Button 
             variant="outline" 
             size="sm"
@@ -270,10 +352,11 @@ export function GradesTab({ classroomId }: GradesTabProps) {
             </DialogContent>
           </Dialog>
         </div>
-      </CardHeader>
+      </div>
+    </CardHeader>
       
       <CardContent className="p-0">
-        <div className="bg-muted/30 p-4 border-b text-sm flex gap-6 overflow-x-auto whitespace-nowrap">
+        <div className="bg-muted/30 p-4 border-b text-sm flex gap-6 overflow-x-auto whitespace-nowrap items-center">
           <div><span className="text-muted-foreground">{language === "th" ? "คะแนนเต็มรวมทั้งหมด:" : "Total Possible Score:"}</span> <strong className="text-primary">{maxPossibleScore}</strong></div>
           <div><span className="text-muted-foreground">{language === "th" ? "เกณฑ์ปัจจุบัน:" : "Current Scale:"}</span> <strong>4</strong>(&ge;{thresholds.grade4}%) <strong>3.5</strong>(&ge;{thresholds.grade3_5}%) <strong>3</strong>(&ge;{thresholds.grade3}%) <strong>2.5</strong>(&ge;{thresholds.grade2_5}%) <strong>2</strong>(&ge;{thresholds.grade2}%) <strong>1.5</strong>(&ge;{thresholds.grade1_5}%) <strong>1</strong>(&ge;{thresholds.grade1}%)</div>
         </div>
