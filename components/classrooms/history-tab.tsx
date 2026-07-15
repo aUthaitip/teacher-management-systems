@@ -225,32 +225,41 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
             </p>
           ) : (
             <div className="space-y-8">
-              <div className="h-[400px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={monthStudentStats}
-                    margin={{ top: 20, right: 30, left: 0, bottom: 60 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis 
-                      dataKey="name" 
-                      axisLine={false} 
-                      tickLine={false} 
-                      tick={{ fontSize: 10, fill: '#888' }} 
-                      angle={-45}
-                      textAnchor="end"
-                    />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888' }} allowDecimals={false} />
-                    <Tooltip 
-                      cursor={{fill: '#f4f4f5'}}
-                      contentStyle={{ borderRadius: '8px', border: '1px solid #f0f0f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
-                    <Bar dataKey="present" name={language === "th" ? "มาเรียน" : "Present"} stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="late" name={language === "th" ? "มาสาย" : "Late"} stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="absent" name={language === "th" ? "ขาดเรียน" : "Absent"} stackId="a" fill="#e11d48" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="w-full overflow-x-auto">
+                <div style={{ height: Math.max(400, monthStudentStats.length * 45) + "px" }} className="w-full min-w-[600px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      layout="vertical"
+                      data={monthStudentStats}
+                      margin={{ top: 20, right: 30, left: 40, bottom: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
+                      <XAxis 
+                        type="number"
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontSize: 12, fill: '#888' }} 
+                        allowDecimals={false}
+                      />
+                      <YAxis 
+                        type="category"
+                        dataKey="name" 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fontSize: 12, fill: '#333', fontWeight: 'bold' }} 
+                        width={100}
+                      />
+                      <Tooltip 
+                        cursor={{fill: '#f4f4f5'}}
+                        contentStyle={{ borderRadius: '8px', border: '1px solid #f0f0f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                      <Bar dataKey="present" name={language === "th" ? "มาเรียน" : "Present"} stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
+                      <Bar dataKey="late" name={language === "th" ? "มาสาย" : "Late"} stackId="a" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={20} />
+                      <Bar dataKey="absent" name={language === "th" ? "ขาดเรียน" : "Absent"} stackId="a" fill="#e11d48" radius={[0, 4, 4, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
 
               <div className="border rounded-xl shadow-sm overflow-hidden bg-background animate-fadeIn">
