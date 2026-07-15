@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import { useApp } from "@/lib/AppContext";
 import { useLanguage } from "@/lib/LanguageContext";
-import { CalendarDays, AlertTriangle, Check, XCircle, Clock, ChevronDown, ChevronUp, BarChart3 } from "lucide-react";
+import { CalendarDays, AlertTriangle, Check, XCircle, Clock, ChevronDown, ChevronUp, BarChart3, PieChart } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,6 +25,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
   const { language, t } = useLanguage();
 
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   const classroomStudents = students
     .filter((s) => s.classroomId === classroomId)
@@ -60,6 +62,32 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
     .filter((s) => s.absent >= 2 || s.attendanceRate < 80)
     .sort((a, b) => b.absent - a.absent); // show highest absences first
 
+  // Group by Month (YYYY-MM)
+  const monthlyStats = classroomAttendance.reduce((acc, record) => {
+    const month = record.date.substring(0, 7); // e.g. 2026-07
+    if (!acc[month]) {
+      acc[month] = { month, present: 0, late: 0, absent: 0, records: [] };
+    }
+    if (record.status === "present") acc[month].present += 1;
+    if (record.status === "late") acc[month].late += 1;
+    if (record.status === "absent") acc[month].absent += 1;
+    acc[month].records.push(record);
+    return acc;
+  }, {} as Record<string, any>);
+
+  const monthlyChartData = Object.values(monthlyStats).sort((a, b) => a.month.localeCompare(b.month));
+
+  let monthStudentStats: any[] = [];
+  if (selectedMonth && monthlyStats[selectedMonth]) {
+    monthStudentStats = classroomStudents.map(student => {
+      const sRecords = monthlyStats[selectedMonth].records.filter((r: any) => r.studentId === student.id);
+      const present = sRecords.filter((r: any) => r.status === "present").length;
+      const late = sRecords.filter((r: any) => r.status === "late").length;
+      const absent = sRecords.filter((r: any) => r.status === "absent").length;
+      return { student, present, late, absent, total: sRecords.length };
+    }).filter(s => s.total > 0).sort((a, b) => b.absent - a.absent || b.late - a.late);
+  }
+
   if (!isLoaded) return null;
 
   return (
@@ -92,7 +120,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
                   >
                     <div>
                       <h4 className="text-xs font-bold text-foreground leading-tight">{student.name}</h4>
-                      <span className="text-[10px] text-muted-foreground">เลขที่ {student.rollNumber}</span>
+                      <span className="text-[10px] text-muted-foreground">{language === "th" ? "เลขที่" : "No."} {student.rollNumber}</span>
                     </div>
                     <div className="text-right">
                       <Badge variant="destructive" className="text-[10px] font-bold rounded-full">
@@ -159,6 +187,89 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
         </Card>
       </div>
 
+      {/* 1.5. Monthly Statistics Graph (กราฟสถิติรายเดือน) */}
+      <Card className="bg-white border shadow-sm">
+        <CardHeader className="p-6 border-b">
+          <CardTitle className="text-lg font-bold flex items-center gap-2">
+            <PieChart className="h-5 w-5" />
+            {language === "th" ? "สถิติการเข้าเรียนรายเดือน" : "Monthly Attendance Stats"}
+          </CardTitle>
+          <CardDescription className="text-xs text-muted-foreground">
+            {language === "th" ? "คลิกที่แท่งกราฟของเดือนที่ต้องการดูรายละเอียดนักเรียนว่าใครขาด/ลา/มาสายกี่ครั้งในเดือนนั้น" : "Click on a bar to view detailed student statistics for that month."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          {monthlyChartData.length === 0 ? (
+            <p className="text-center py-8 text-sm text-muted-foreground italic">
+              {language === "th" ? "ยังไม่มีข้อมูลสถิติรายเดือน" : "No monthly statistics available."}
+            </p>
+          ) : (
+            <div className="space-y-8">
+              <div className="h-[300px] w-full cursor-pointer">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={monthlyChartData}
+                    margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                    onClick={(data) => {
+                      if (data && data.activeLabel) {
+                        setSelectedMonth(data.activeLabel === selectedMonth ? null : data.activeLabel);
+                      }
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888' }} />
+                    <Tooltip 
+                      cursor={{fill: '#f4f4f5'}}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid #f0f0f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
+                    <Bar dataKey="present" name={language === "th" ? "มาเรียน (คน-ครั้ง)" : "Present"} fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="late" name={language === "th" ? "มาสาย (คน-ครั้ง)" : "Late"} fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="absent" name={language === "th" ? "ขาดเรียน (คน-ครั้ง)" : "Absent"} fill="#e11d48" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {selectedMonth && (
+                <div className="border rounded-xl shadow-sm overflow-hidden bg-slate-50/30 animate-fadeIn">
+                  <div className="p-4 border-b bg-white flex justify-between items-center">
+                    <h3 className="font-bold text-sm text-foreground">
+                      {language === "th" ? `รายละเอียดเดือน ${selectedMonth}` : `Details for ${selectedMonth}`}
+                    </h3>
+                    <Badge variant="outline" className="text-xs bg-white cursor-pointer" onClick={() => setSelectedMonth(null)}>
+                      {language === "th" ? "ปิด" : "Close"}
+                    </Badge>
+                  </div>
+                  <Table>
+                    <TableHeader className="bg-white">
+                      <TableRow>
+                        <TableHead className="w-16">{t("rollNumberCol")}</TableHead>
+                        <TableHead>{t("studentNameCol")}</TableHead>
+                        <TableHead className="text-center w-20 text-emerald-600 font-bold">{t("presentBtn")}</TableHead>
+                        <TableHead className="text-center w-20 text-amber-500 font-bold">{t("lateBtn")}</TableHead>
+                        <TableHead className="text-center w-20 text-rose-500 font-bold">{t("absentBtn")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {monthStudentStats.map(({ student, present, late, absent }) => (
+                        <TableRow key={student.id} className="hover:bg-white/50 transition-colors">
+                          <TableCell className="font-bold text-xs">{student.rollNumber}</TableCell>
+                          <TableCell className="font-bold text-xs">{student.name}</TableCell>
+                          <TableCell className="text-center text-xs font-semibold">{present}</TableCell>
+                          <TableCell className="text-center text-xs font-semibold">{late}</TableCell>
+                          <TableCell className="text-center text-xs font-semibold text-rose-600">{absent}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
       {/* 2. Daily Log / Archive (ประวัติเช็กชื่อย้อนหลังรายวัน) */}
       <Card className="bg-white border shadow-sm">
         <CardHeader className="p-6 border-b">
@@ -202,13 +313,13 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
                       {/* Count Overview Badges */}
                       <div className="hidden sm:flex gap-2">
                         <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-bold text-[10px]">
-                          มา {presentCount}
+                          {language === "th" ? "มา" : "P"} {presentCount}
                         </Badge>
                         <Badge className="bg-amber-500/10 text-amber-600 border-none font-bold text-[10px]">
-                          สาย {lateCount}
+                          {language === "th" ? "สาย" : "L"} {lateCount}
                         </Badge>
                         <Badge className="bg-rose-500/10 text-rose-600 border-none font-bold text-[10px]">
-                          ขาด {absentCount}
+                          {language === "th" ? "ขาด" : "A"} {absentCount}
                         </Badge>
                       </div>
                       {isExpanded ? <ChevronUp className="h-4 w-4 text-zinc-400" /> : <ChevronDown className="h-4 w-4 text-zinc-400" />}
@@ -221,9 +332,9 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
                       <Table>
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-16">เลขที่</TableHead>
-                            <TableHead>ชื่อนักเรียน</TableHead>
-                            <TableHead className="text-right w-36">สถานะเข้าเรียน</TableHead>
+                            <TableHead className="w-16">{t("rollNumberCol")}</TableHead>
+                            <TableHead>{t("studentNameCol")}</TableHead>
+                            <TableHead className="text-right w-36">{t("attendanceStatusCol")}</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>

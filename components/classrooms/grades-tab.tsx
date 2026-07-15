@@ -33,14 +33,25 @@ export function GradesTab({ classroomId }: GradesTabProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [thresholds, setThresholds] = useState({
     grade4: 80,
+    grade3_5: 75,
     grade3: 70,
+    grade2_5: 65,
     grade2: 60,
+    grade1_5: 55,
     grade1: 50
   });
 
   useEffect(() => {
     if (classroom?.gradeThresholds) {
-      setThresholds(classroom.gradeThresholds);
+      setThresholds({
+        grade4: classroom.gradeThresholds.grade4 ?? 80,
+        grade3_5: classroom.gradeThresholds.grade3_5 ?? 75,
+        grade3: classroom.gradeThresholds.grade3 ?? 70,
+        grade2_5: classroom.gradeThresholds.grade2_5 ?? 65,
+        grade2: classroom.gradeThresholds.grade2 ?? 60,
+        grade1_5: classroom.gradeThresholds.grade1_5 ?? 55,
+        grade1: classroom.gradeThresholds.grade1 ?? 50
+      });
     }
   }, [classroom]);
 
@@ -70,10 +81,13 @@ export function GradesTab({ classroomId }: GradesTabProps) {
     }
 
     if (percentage >= thresholds.grade4) return { grade: "4", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" };
+    if (percentage >= thresholds.grade3_5) return { grade: "3.5", color: "bg-teal-500/10 text-teal-600 border-teal-500/20" };
     if (percentage >= thresholds.grade3) return { grade: "3", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" };
+    if (percentage >= thresholds.grade2_5) return { grade: "2.5", color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20" };
     if (percentage >= thresholds.grade2) return { grade: "2", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" };
+    if (percentage >= thresholds.grade1_5) return { grade: "1.5", color: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" };
     if (percentage >= thresholds.grade1) return { grade: "1", color: "bg-orange-500/10 text-orange-600 border-orange-500/20" };
-    return { grade: "0 (ไม่ผ่าน)", color: "bg-rose-500/10 text-rose-600 border-rose-500/20" };
+    return { grade: language === "th" ? "0 (ไม่ผ่าน)" : "0 (Fail)", color: "bg-rose-500/10 text-rose-600 border-rose-500/20" };
   };
 
   const handleSaveSettings = (e: React.FormEvent) => {
@@ -101,7 +115,7 @@ export function GradesTab({ classroomId }: GradesTabProps) {
     });
 
     if (data.length === 0) {
-      data.push({ "เลขที่": "1", "ชื่อ-นามสกุล": "ตัวอย่าง", "คะแนนรวม": 85, "เกรด": "4" });
+      data.push({ [language === "th" ? "เลขที่" : "No."]: "1", [language === "th" ? "ชื่อ-นามสกุล" : "Name"]: language === "th" ? "ตัวอย่าง" : "Example", [language === "th" ? "คะแนนรวม" : "Total"]: 85, [language === "th" ? "เกรด" : "Grade"]: "4" });
     }
 
     const worksheet = XLSX.utils.json_to_sheet(data);
@@ -221,19 +235,31 @@ export function GradesTab({ classroomId }: GradesTabProps) {
               </DialogHeader>
               <form onSubmit={handleSaveSettings} className="space-y-4 py-4">
                 <div className="grid grid-cols-2 items-center gap-4">
-                  <label className="text-sm font-semibold">เกรด 4 (&ge;)</label>
+                  <label className="text-sm font-semibold">{language === "th" ? "เกรด 4" : "Grade 4"} (&ge;)</label>
                   <Input type="number" min="0" max="100" value={thresholds.grade4} onChange={e => setThresholds({...thresholds, grade4: Number(e.target.value)})} />
                 </div>
                 <div className="grid grid-cols-2 items-center gap-4">
-                  <label className="text-sm font-semibold">เกรด 3 (&ge;)</label>
+                  <label className="text-sm font-semibold">{language === "th" ? "เกรด 3.5" : "Grade 3.5"} (&ge;)</label>
+                  <Input type="number" min="0" max="100" value={thresholds.grade3_5} onChange={e => setThresholds({...thresholds, grade3_5: Number(e.target.value)})} />
+                </div>
+                <div className="grid grid-cols-2 items-center gap-4">
+                  <label className="text-sm font-semibold">{language === "th" ? "เกรด 3" : "Grade 3"} (&ge;)</label>
                   <Input type="number" min="0" max="100" value={thresholds.grade3} onChange={e => setThresholds({...thresholds, grade3: Number(e.target.value)})} />
                 </div>
                 <div className="grid grid-cols-2 items-center gap-4">
-                  <label className="text-sm font-semibold">เกรด 2 (&ge;)</label>
+                  <label className="text-sm font-semibold">{language === "th" ? "เกรด 2.5" : "Grade 2.5"} (&ge;)</label>
+                  <Input type="number" min="0" max="100" value={thresholds.grade2_5} onChange={e => setThresholds({...thresholds, grade2_5: Number(e.target.value)})} />
+                </div>
+                <div className="grid grid-cols-2 items-center gap-4">
+                  <label className="text-sm font-semibold">{language === "th" ? "เกรด 2" : "Grade 2"} (&ge;)</label>
                   <Input type="number" min="0" max="100" value={thresholds.grade2} onChange={e => setThresholds({...thresholds, grade2: Number(e.target.value)})} />
                 </div>
                 <div className="grid grid-cols-2 items-center gap-4">
-                  <label className="text-sm font-semibold">เกรด 1 (&ge;)</label>
+                  <label className="text-sm font-semibold">{language === "th" ? "เกรด 1.5" : "Grade 1.5"} (&ge;)</label>
+                  <Input type="number" min="0" max="100" value={thresholds.grade1_5} onChange={e => setThresholds({...thresholds, grade1_5: Number(e.target.value)})} />
+                </div>
+                <div className="grid grid-cols-2 items-center gap-4">
+                  <label className="text-sm font-semibold">{language === "th" ? "เกรด 1" : "Grade 1"} (&ge;)</label>
                   <Input type="number" min="0" max="100" value={thresholds.grade1} onChange={e => setThresholds({...thresholds, grade1: Number(e.target.value)})} />
                 </div>
                 <DialogFooter className="pt-4">
@@ -249,7 +275,7 @@ export function GradesTab({ classroomId }: GradesTabProps) {
       <CardContent className="p-0">
         <div className="bg-muted/30 p-4 border-b text-sm flex gap-6 overflow-x-auto whitespace-nowrap">
           <div><span className="text-muted-foreground">{language === "th" ? "คะแนนเต็มรวมทั้งหมด:" : "Total Possible Score:"}</span> <strong className="text-primary">{maxPossibleScore}</strong></div>
-          <div><span className="text-muted-foreground">{language === "th" ? "เกณฑ์ปัจจุบัน:" : "Current Scale:"}</span> <strong>4</strong>(&ge;{thresholds.grade4}%) <strong>3</strong>(&ge;{thresholds.grade3}%) <strong>2</strong>(&ge;{thresholds.grade2}%) <strong>1</strong>(&ge;{thresholds.grade1}%)</div>
+          <div><span className="text-muted-foreground">{language === "th" ? "เกณฑ์ปัจจุบัน:" : "Current Scale:"}</span> <strong>4</strong>(&ge;{thresholds.grade4}%) <strong>3.5</strong>(&ge;{thresholds.grade3_5}%) <strong>3</strong>(&ge;{thresholds.grade3}%) <strong>2.5</strong>(&ge;{thresholds.grade2_5}%) <strong>2</strong>(&ge;{thresholds.grade2}%) <strong>1.5</strong>(&ge;{thresholds.grade1_5}%) <strong>1</strong>(&ge;{thresholds.grade1}%)</div>
         </div>
 
         {classroomStudents.length === 0 ? (

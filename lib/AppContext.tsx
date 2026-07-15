@@ -1,6 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 // Types
 export interface Teacher {
@@ -24,7 +26,7 @@ export interface Classroom {
   name: string;
   subjectId: string;
   description?: string;
-  gradeThresholds?: { grade4: number; grade3: number; grade2: number; grade1: number };
+  gradeThresholds?: { grade4: number; grade3_5: number; grade3: number; grade2_5: number; grade2: number; grade1_5: number; grade1: number };
 }
 
 export interface Student {
@@ -76,7 +78,7 @@ interface AppContextType {
   // Classroom Actions
   addClassroom: (name: string, subjectId: string, description?: string) => void;
   updateClassroom: (id: string, name: string, description?: string) => void;
-  updateClassroomGradeSettings: (id: string, thresholds: { grade4: number; grade3: number; grade2: number; grade1: number }) => void;
+  updateClassroomGradeSettings: (id: string, thresholds: { grade4: number; grade3_5: number; grade3: number; grade2_5: number; grade2: number; grade1_5: number; grade1: number }) => void;
   deleteClassroom: (id: string) => void;
 
   // Student Actions
@@ -160,16 +162,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // `undefined` since initialTeachers is an empty array. That undefined
       // got saved via JSON.stringify -> the string "undefined" -> crash on
       // next JSON.parse. Fall back to `null` instead, which is valid JSON.
-      setCurrentTeacher(safeParse<Teacher | null>(storedTeacher, null));
-      setSubjects(safeParse(storedSubjects, initialSubjects));
-      setClassrooms(safeParse(storedClassrooms, initialClassrooms));
-      setStudents(safeParse(storedStudents, initialStudents));
-      setAttendance(safeParse(storedAttendance, initialAttendance));
-      setScores(safeParse(storedScores, initialScores));
-      const timer = setTimeout(() => {
+      const parsedTeacher = safeParse<Teacher | null>(storedTeacher, null);
+      setCurrentTeacher(parsedTeacher);
+      
+      const localSubjects = safeParse(storedSubjects, initialSubjects);
+      const localClassrooms = safeParse(storedClassrooms, initialClassrooms);
+      const localStudents = safeParse(storedStudents, initialStudents);
+      const localAttendance = safeParse(storedAttendance, initialAttendance);
+      const localScores = safeParse(storedScores, initialScores);
+
+      setSubjects(localSubjects);
+      setClassrooms(localClassrooms);
+      setStudents(localStudents);
+      setAttendance(localAttendance);
+      setScores(localScores);
+      
+      const loadFirebaseData = async (teacher: Teacher) => {
+        try {
+          const docRef = doc(db, "teacher_data", teacher.id);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.subjects) setSubjects(data.subjects);
+            if (data.classrooms) setClassrooms(data.classrooms);
+            if (data.students) setStudents(data.students);
+            if (data.attendance) setAttendance(data.attendance);
+            if (data.scores) setScores(data.scores);
+          } else {
+            // If online data doesn't exist yet but we have local data, it will be uploaded in the next effect
+          }
+        } catch (error) {
+          console.error("Error loading from Firebase:", error);
+        }
+      };
+
+      if (parsedTeacher) {
+        loadFirebaseData(parsedTeacher).finally(() => setIsLoaded(true));
+      } else {
         setIsLoaded(true);
-      }, 1000); // 1-second simulated delay
-      return () => clearTimeout(timer);
+      }
     }
   }, []);
 
@@ -183,6 +214,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       safeSetItem("tms_students", students);
       safeSetItem("tms_attendance", attendance);
       safeSetItem("tms_scores", scores);
+
+      // Sync to Firebase
+      if (currentTeacher) {
+        // Debounce or save directly
+        const syncToFirebase = async () => {
+          try {
+            await setDoc(doc(db, "teacher_data", currentTeacher.id), {
+              subjects,
+              classrooms,
+              students,
+              attendance,
+              scores,
+              updatedAt: new Date().toISOString()
+            });
+          } catch (error) {
+            console.error("Error syncing to Firebase:", error);
+          }
+        };
+        syncToFirebase();
+      }
     }
   }, [teachers, currentTeacher, subjects, classrooms, students, attendance, scores, isLoaded]);
 
@@ -310,7 +361,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setClassrooms(prev => prev.map(c => c.id === id ? { ...c, name, description } : c));
   };
 
-  const updateClassroomGradeSettings = (id: string, thresholds: { grade4: number; grade3: number; grade2: number; grade1: number }) => {
+  const updateClassroomGradeSettings = (id: string, thresholds: { grade4: number; grade3_5: number; grade3: number; grade2_5: number; grade2: number; grade1_5: number; grade1: number }) => {
     setClassrooms(prev => prev.map(c => c.id === id ? { ...c, gradeThresholds: thresholds } : c));
   };
 

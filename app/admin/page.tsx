@@ -161,7 +161,8 @@ export default function AdminPage() {
                   size="sm" 
                   className="text-[10px] h-6 py-0 px-2 w-fit text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-100 mt-1"
                   onClick={() => {
-                    if (window.confirm("ต้องการลบข้อมูลวิชาและห้องเรียนที่ตกค้างจากครูที่ถูกลบไปแล้วใช่หรือไม่?")) {
+                    const confirmMsg = language === "th" ? "ต้องการลบข้อมูลวิชาและห้องเรียนที่ตกค้างจากครูที่ถูกลบไปแล้วใช่หรือไม่?" : "Are you sure you want to clear orphaned subjects and classrooms?";
+                    if (window.confirm(confirmMsg)) {
                       const validTeacherIds = new Set(firebaseTeachers.map(t => t.id));
                       
                       const lsSubjects = JSON.parse(localStorage.getItem("tms_subjects") || "[]");
