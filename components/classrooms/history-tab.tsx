@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { useApp } from "@/lib/AppContext";
 import { useLanguage } from "@/lib/LanguageContext";
-import { CalendarDays, AlertTriangle, Check, XCircle, Clock, ChevronDown, ChevronUp, BarChart3, PieChart } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from "recharts";
+import { CalendarDays, AlertTriangle, Check, XCircle, Clock, ChevronDown, ChevronUp, BarChart3, PieChart as PieChartIcon } from "lucide-react";
+import { BarChart, Bar, PieChart, Pie, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -76,23 +76,21 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
     setSelectedMonth(availableMonths[0]);
   }
 
-  let monthStudentStats: any[] = [];
+  let pieData: any[] = [];
   if (selectedMonth) {
-    monthStudentStats = classroomStudents.map(student => {
-      const sRecords = classroomAttendance.filter((r: any) => r.studentId === student.id && r.date.startsWith(selectedMonth));
-      const present = sRecords.filter((r: any) => r.status === "present").length;
-      const late = sRecords.filter((r: any) => r.status === "late").length;
-      const absent = sRecords.filter((r: any) => r.status === "absent").length;
-      return { 
-        id: student.id,
-        name: student.name, 
-        rollNumber: student.rollNumber,
-        present, 
-        late, 
-        absent, 
-        total: sRecords.length 
-      };
-    });
+    const monthRecords = classroomAttendance.filter(a => a.date.startsWith(selectedMonth));
+    const totalP = monthRecords.filter(a => a.status === "present").length;
+    const totalL = monthRecords.filter(a => a.status === "late").length;
+    const totalA = monthRecords.filter(a => a.status === "absent").length;
+    const total = monthRecords.length;
+
+    if (total > 0) {
+      pieData = [
+        { name: language === "th" ? "มาเรียน" : "Present", value: totalP, percentage: Math.round((totalP/total)*100), color: "#10b981" },
+        { name: language === "th" ? "มาสาย" : "Late", value: totalL, percentage: Math.round((totalL/total)*100), color: "#f59e0b" },
+        { name: language === "th" ? "ขาดเรียน" : "Absent", value: totalA, percentage: Math.round((totalA/total)*100), color: "#e11d48" }
+      ];
+    }
   }
 
   if (!isLoaded) return null;
@@ -199,11 +197,11 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
         <CardHeader className="p-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <CardTitle className="text-lg font-bold flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              {language === "th" ? "สถิติการเข้าเรียนรายเดือนของนักเรียน" : "Monthly Student Statistics"}
+              <PieChartIcon className="h-5 w-5" />
+              {language === "th" ? "สถิติการเข้าเรียนรายเดือนของห้อง" : "Monthly Classroom Statistics"}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground mt-1">
-              {language === "th" ? "แสดงจำนวนครั้งที่ ขาด ลา มาสาย ของนักเรียนแต่ละคนในเดือนที่เลือก" : "Displays attendance counts for each student in the selected month."}
+              {language === "th" ? "แสดงสัดส่วนร้อยละ (เปอร์เซ็นต์) ของการ มาเรียน มาสาย ขาดเรียน ของทั้งห้องในเดือนที่เลือก" : "Displays the percentage of present, late, and absent records for the selected month."}
             </CardDescription>
           </div>
           {availableMonths.length > 0 && (
@@ -225,41 +223,40 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
             </p>
           ) : (
             <div className="space-y-8">
-              <div className="w-full overflow-x-auto">
-                <div style={{ height: Math.max(400, monthStudentStats.length * 45) + "px" }} className="w-full min-w-[600px]">
+              <div className="h-[400px] w-full">
+                {pieData.length === 0 ? (
+                  <p className="text-center py-20 text-sm text-muted-foreground italic">
+                    {language === "th" ? "ไม่มีข้อมูลการเช็กชื่อในเดือนนี้" : "No attendance data for this month."}
+                  </p>
+                ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      layout="vertical"
-                      data={monthStudentStats}
-                      margin={{ top: 20, right: 30, left: 40, bottom: 20 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-                      <XAxis 
-                        type="number"
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 12, fill: '#888' }} 
-                        allowDecimals={false}
-                      />
-                      <YAxis 
-                        type="category"
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 12, fill: '#333', fontWeight: 'bold' }} 
-                        width={100}
-                      />
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={130}
+                        innerRadius={60}
+                        label={({ payload }) => `${payload.name} ${payload.percentage}%`}
+                        labelLine={true}
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
                       <Tooltip 
-                        cursor={{fill: '#f4f4f5'}}
+                        formatter={(value, name, props) => {
+                          const p = props.payload.percentage;
+                          return [`${value} ครั้ง (${p}%)`, name];
+                        }}
                         contentStyle={{ borderRadius: '8px', border: '1px solid #f0f0f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                       />
-                      <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                      <Bar dataKey="present" name={language === "th" ? "มาเรียน" : "Present"} stackId="a" fill="#10b981" radius={[0, 4, 4, 0]} barSize={20} />
-                      <Bar dataKey="late" name={language === "th" ? "มาสาย" : "Late"} stackId="a" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={20} />
-                      <Bar dataKey="absent" name={language === "th" ? "ขาดเรียน" : "Absent"} stackId="a" fill="#e11d48" radius={[0, 4, 4, 0]} barSize={20} />
-                    </BarChart>
+                      <Legend iconType="circle" wrapperStyle={{ fontSize: '14px', paddingTop: '20px' }} />
+                    </PieChart>
                   </ResponsiveContainer>
-                </div>
+                )}
               </div>
 
               <div className="border rounded-xl shadow-sm overflow-hidden bg-background animate-fadeIn">
@@ -274,15 +271,31 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {monthStudentStats.sort((a,b) => b.absent - a.absent || b.late - a.late).map((st) => (
-                      <TableRow key={st.id} className="hover:bg-muted/10 transition-colors">
-                        <TableCell className="font-bold text-xs">{st.rollNumber}</TableCell>
-                        <TableCell className="font-bold text-xs">{st.name}</TableCell>
-                        <TableCell className="text-center text-xs font-semibold">{st.present}</TableCell>
-                        <TableCell className="text-center text-xs font-semibold">{st.late}</TableCell>
-                        <TableCell className="text-center text-xs font-semibold text-rose-600">{st.absent}</TableCell>
-                      </TableRow>
-                    ))}
+                    {(() => {
+                      // We still want to show the student breakdown table below the chart
+                      // So calculate monthStudentStats just for the table
+                      const monthStudentStats = classroomStudents.map(student => {
+                        const sRecords = classroomAttendance.filter((r: any) => r.studentId === student.id && r.date.startsWith(selectedMonth));
+                        return { 
+                          id: student.id,
+                          name: student.name, 
+                          rollNumber: student.rollNumber,
+                          present: sRecords.filter((r: any) => r.status === "present").length, 
+                          late: sRecords.filter((r: any) => r.status === "late").length, 
+                          absent: sRecords.filter((r: any) => r.status === "absent").length, 
+                        };
+                      });
+                      
+                      return monthStudentStats.sort((a,b) => b.absent - a.absent || b.late - a.late).map((st) => (
+                        <TableRow key={st.id} className="hover:bg-muted/10 transition-colors">
+                          <TableCell className="font-bold text-xs">{st.rollNumber}</TableCell>
+                          <TableCell className="font-bold text-xs">{st.name}</TableCell>
+                          <TableCell className="text-center text-xs font-semibold">{st.present}</TableCell>
+                          <TableCell className="text-center text-xs font-semibold">{st.late}</TableCell>
+                          <TableCell className="text-center text-xs font-semibold text-rose-600">{st.absent}</TableCell>
+                        </TableRow>
+                      ));
+                    })()}
                   </TableBody>
                 </Table>
               </div>
@@ -303,22 +316,30 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
               {language === "th" ? "เลือกวันที่ที่เคยเช็กชื่อเพื่อตรวจสอบรายชื่อนักเรียนในวันนั้น" : "Select a date to view the attendance log for that specific day."}
             </CardDescription>
           </div>
-          {attendanceDates.length > 0 && (
-            <select
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+            <input 
+              type="date"
               className="border border-border bg-card text-foreground rounded-md px-3 py-1.5 text-sm font-bold shadow-sm"
               value={selectedHistoryDate || ""}
               onChange={(e) => setSelectedHistoryDate(e.target.value)}
-            >
-              {attendanceDates.map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          )}
+            />
+            {attendanceDates.length > 0 && (
+              <select
+                className="border border-border bg-card text-foreground rounded-md px-3 py-1.5 text-sm font-bold shadow-sm"
+                value={selectedHistoryDate || ""}
+                onChange={(e) => setSelectedHistoryDate(e.target.value)}
+              >
+                {attendanceDates.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-4 space-y-3">
-          {attendanceDates.length === 0 ? (
+          {!selectedHistoryDate || !attendanceDates.includes(selectedHistoryDate) ? (
             <p className="text-center py-8 text-sm text-muted-foreground italic">
-              {language === "th" ? "ยังไม่มีบันทึกประวัติการเช็กชื่อสำหรับห้องนี้" : "No daily records exist for this classroom yet."}
+              {language === "th" ? "ไม่พบข้อมูลการเช็กชื่อในวันที่เลือก" : "No attendance records found for the selected date."}
             </p>
           ) : (
             selectedHistoryDate && (
