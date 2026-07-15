@@ -84,11 +84,11 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <Card className="bg-white border shadow-sm">
+        <Card className="bg-card border shadow-sm">
           <CardHeader className="p-6 border-b flex flex-col sm:flex-row items-center gap-6">
             {/* Avatar Preview */}
             <div className="relative group shrink-0">
-              <div className="h-20 w-20 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-foreground font-black text-2xl overflow-hidden shadow-inner">
+              <div className="h-20 w-20 rounded-full bg-muted border border-border flex items-center justify-center text-foreground font-black text-2xl overflow-hidden shadow-inner">
                 {avatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={avatar} alt="avatar" className="h-full w-full object-cover" />
@@ -119,7 +119,7 @@ export default function ProfilePage() {
                   variant="outline" 
                   size="sm" 
                   onClick={triggerFileInput}
-                  className="h-8 text-xs font-bold flex items-center gap-1 cursor-pointer border-zinc-200"
+                  className="h-8 text-xs font-bold flex items-center gap-1 cursor-pointer border-border"
                 >
                   <Upload className="h-3.5 w-3.5" />
                   อัปโหลดรูปภาพ

@@ -39,14 +39,14 @@ export default function DashboardLayout({
 
   if (!isLoaded || !currentTeacher) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-900">
+      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900 relative">
+    <div className="flex min-h-screen bg-background text-foreground relative">
       {/* Desktop Sidebar (visible on lg screens, hidden on mobile/tablet) */}
       <div className="hidden lg:block lg:w-64 lg:shrink-0">
         <Sidebar />
@@ -55,13 +55,13 @@ export default function DashboardLayout({
       {/* Mobile Drawer Overlay */}
       {isMobileOpen && (
         <div 
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-primary/40 z-40 lg:hidden transition-opacity duration-300"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       {/* Mobile Sidebar sliding panel */}
-      <div className={`fixed inset-y-0 left-0 w-64 bg-white z-50 transform lg:hidden transition-transform duration-300 ease-in-out ${
+      <div className={`fixed inset-y-0 left-0 w-64 bg-card z-50 transform lg:hidden transition-transform duration-300 ease-in-out ${
         isMobileOpen ? "translate-x-0" : "-translate-x-full"
       }`}>
         <div className="relative h-full flex flex-col">
@@ -83,7 +83,7 @@ export default function DashboardLayout({
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile Top Navbar (hidden on lg screens) */}
-        <header className="lg:hidden bg-white border-b h-13 flex items-center justify-between px-4 shrink-0 sticky top-0 z-30">
+        <header className="lg:hidden bg-card border-b border-border h-13 flex items-center justify-between px-4 shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-2">
             <div className="bg-primary p-1 rounded-md text-primary-foreground">
               <GraduationCap className="h-4.5 w-4.5" />
@@ -102,7 +102,7 @@ export default function DashboardLayout({
         </header>
 
         {/* Page Content area */}
-        <main className="flex-1 p-4 md:p-8 bg-slate-50/50 overflow-y-auto">
+        <main className="flex-1 p-4 md:p-8 bg-background overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

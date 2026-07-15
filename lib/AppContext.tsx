@@ -42,6 +42,7 @@ export interface AttendanceRecord {
   classroomId: string;
   studentId: string;
   status: "present" | "absent" | "late";
+  reason?: "leave_personal" | "leave_sick" | "no_show";
 }
 
 export interface ScoreRecord {
@@ -88,7 +89,7 @@ interface AppContextType {
   deleteStudent: (id: string) => void;
 
   // Attendance Actions
-  saveAttendance: (date: string, classroomId: string, records: { studentId: string; status: "present" | "absent" | "late" }[]) => void;
+  saveAttendance: (date: string, classroomId: string, records: { studentId: string; status: "present" | "absent" | "late"; reason?: "leave_personal" | "leave_sick" | "no_show" }[]) => void;
 
   // Score Actions
   addScoreChapter: (chapterName: string, totalScore: number, passingScore: number, classroomId: string) => void;
@@ -409,16 +410,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Attendance Actions
-  const saveAttendance = (date: string, classroomId: string, records: { studentId: string; status: "present" | "absent" | "late" }[]) => {
+  const saveAttendance = (date: string, classroomId: string, records: { studentId: string; status: "present" | "absent" | "late"; reason?: "leave_personal" | "leave_sick" | "no_show" }[]) => {
     setAttendance(prev => {
       // Filter out existing records for this date and classroom
       const filtered = prev.filter(a => !(a.date === date && a.classroomId === classroomId));
-      const newRecords = records.map(r => ({
+      const newRecords: AttendanceRecord[] = records.map(r => ({
         id: `att-${Date.now()}-${r.studentId}`,
         date,
         classroomId,
         studentId: r.studentId,
         status: r.status,
+        reason: r.reason,
       }));
       return [...filtered, ...newRecords];
     });

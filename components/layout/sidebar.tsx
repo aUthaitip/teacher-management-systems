@@ -47,7 +47,7 @@ export default function Sidebar() {
   if (!isLoaded) return null;
 
   return (
-    <aside className="w-64 min-h-screen bg-white text-foreground border-r flex flex-col justify-between p-5">
+    <aside className="w-64 min-h-screen bg-card text-foreground border-r flex flex-col justify-between p-5">
       <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-8 px-2 py-1">

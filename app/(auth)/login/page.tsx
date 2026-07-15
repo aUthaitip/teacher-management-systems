@@ -70,15 +70,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-white p-8 md:p-10 rounded-2xl shadow-2xl w-full max-w-md border border-zinc-100 relative text-zinc-900">
+    <div className="bg-card p-8 md:p-10 rounded-2xl shadow-2xl w-full max-w-md border border-border relative text-foreground">
       <div className="flex flex-col items-center mb-8">
-        <div className="bg-black p-3 rounded-2xl text-white shadow-lg mb-4">
+        <div className="bg-primary p-3 rounded-2xl text-primary-foreground shadow-lg mb-4">
           <GraduationCap className="h-8 w-8" />
         </div>
-        <h1 className="text-2xl md:text-3xl font-black text-zinc-900 tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
           {t("loginTitle")}
         </h1>
-        <p className="text-sm text-zinc-500 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           {t("loginSubtitle")}
         </p>
       </div>
@@ -92,14 +92,14 @@ export default function LoginPage() {
 
       <form onSubmit={handleLogin} className="space-y-4">
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {t("emailLabel")}
           </Label>
           <div className="relative">
-            <Mail className="absolute left-3 top-3.5 h-4 w-4 text-zinc-400 z-10" />
+            <Mail className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground z-10" />
             <Input
               type="email"
-              className="pl-9 h-11 text-zinc-900 bg-zinc-50/50"
+              className="pl-9 h-11 text-foreground bg-background/50"
               placeholder="teacher@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -108,28 +108,28 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {t("passwordLabel")}
           </Label>
           <div className="relative">
-            <Lock className="absolute left-3 top-3.5 h-4 w-4 text-zinc-400 z-10" />
+            <Lock className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground z-10" />
             <Input
               type="password"
-              className="pl-9 h-11 text-zinc-900 bg-zinc-50/50"
+              className="pl-9 h-11 text-foreground bg-background/50"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            {t("defaultPasswordNote")} <code className="bg-zinc-100 px-1 rounded text-zinc-600">password123</code>
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("defaultPasswordNote")} <code className="bg-muted px-1 rounded text-zinc-600">password123</code>
           </p>
         </div>
 
         <Button
           type="submit"
           disabled={loading}
-          className="w-full bg-black hover:bg-zinc-800 text-white font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2 h-11 cursor-pointer disabled:opacity-50"
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 mt-2 h-11 cursor-pointer disabled:opacity-50"
         >
           {loading ? (
             <span className="animate-pulse">{language === "th" ? "กำลังประมวลผล..." : "Processing..."}</span>
@@ -142,7 +142,7 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <div className="mt-8 text-center text-sm text-zinc-500">
+      <div className="mt-8 text-center text-sm text-muted-foreground">
         {t("noAccount")}{" "}
         <Link href="/register" className="text-black hover:underline font-bold">
           {t("signUpHere")}

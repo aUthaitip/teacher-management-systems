@@ -22,7 +22,7 @@ export function InfoTab({ classroomId }: InfoTabProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <Card className="bg-white border shadow-sm md:col-span-2">
+      <Card className="bg-card border shadow-sm md:col-span-2">
         <CardHeader className="p-6 border-b">
           <CardTitle className="text-lg font-bold text-foreground">{t("classInfoTitle")}</CardTitle>
         </CardHeader>
@@ -44,7 +44,7 @@ export function InfoTab({ classroomId }: InfoTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="bg-white border shadow-sm">
+      <Card className="bg-card border shadow-sm">
         <CardHeader className="p-6 border-b">
           <CardTitle className="text-lg font-bold text-foreground">{t("statisticsTitle")}</CardTitle>
         </CardHeader>

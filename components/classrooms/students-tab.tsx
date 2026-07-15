@@ -109,7 +109,7 @@ export function StudentsTab({ classroomId }: StudentsTabProps) {
   if (!isLoaded) return null;
 
   return (
-    <Card className="bg-white border shadow-sm">
+    <Card className="bg-card border shadow-sm">
       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 border-b">
         <div>
           <CardTitle className="text-lg font-bold text-foreground">{t("studentRegistersTitle")}</CardTitle>

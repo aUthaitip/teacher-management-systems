@@ -222,7 +222,7 @@ export function ScoresTab({ classroomId }: ScoresTabProps) {
       </div>
 
       {currentChapter ? (
-        <Card className="bg-white border shadow-sm">
+        <Card className="bg-card border shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between p-6 border-b">
             <div>
               <CardTitle className="text-lg font-bold">{currentChapter.chapterName}</CardTitle>
@@ -299,7 +299,7 @@ export function ScoresTab({ classroomId }: ScoresTabProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="bg-white rounded-xl border p-12 text-center max-w-xl mx-auto shadow-sm">
+        <div className="bg-card rounded-xl border p-12 text-center max-w-xl mx-auto shadow-sm">
           <Award className="h-12 w-12 mx-auto text-muted/60 mb-3" />
           <h3 className="text-lg font-bold text-foreground">{t("noChaptersYet")}</h3>
           <p className="text-sm text-muted-foreground mt-1">{t("addChapterDesc")}</p>

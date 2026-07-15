@@ -25,6 +25,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
   const { language, t } = useLanguage();
 
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [selectedHistoryDate, setSelectedHistoryDate] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
   const classroomStudents = students
@@ -37,6 +38,11 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
   const attendanceDates = Array.from(new Set(classroomAttendance.map((a) => a.date))).sort(
     (a, b) => new Date(b).getTime() - new Date(a).getTime()
   );
+
+  // Default to the most recent date if not selected
+  if (!selectedHistoryDate && attendanceDates.length > 0) {
+    setSelectedHistoryDate(attendanceDates[0]);
+  }
 
   // Calculate statistics per student
   const studentStats = classroomStudents.map((student) => {
@@ -62,30 +68,31 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
     .filter((s) => s.absent >= 2 || s.attendanceRate < 80)
     .sort((a, b) => b.absent - a.absent); // show highest absences first
 
-  // Group by Month (YYYY-MM)
-  const monthlyStats = classroomAttendance.reduce((acc, record) => {
-    const month = record.date.substring(0, 7); // e.g. 2026-07
-    if (!acc[month]) {
-      acc[month] = { month, present: 0, late: 0, absent: 0, records: [] };
-    }
-    if (record.status === "present") acc[month].present += 1;
-    if (record.status === "late") acc[month].late += 1;
-    if (record.status === "absent") acc[month].absent += 1;
-    acc[month].records.push(record);
-    return acc;
-  }, {} as Record<string, any>);
+  // Get list of available months
+  const availableMonths = Array.from(new Set(classroomAttendance.map(a => a.date.substring(0, 7)))).sort().reverse();
 
-  const monthlyChartData = Object.values(monthlyStats).sort((a, b) => a.month.localeCompare(b.month));
+  // If no selected month, default to the most recent one
+  if (!selectedMonth && availableMonths.length > 0) {
+    setSelectedMonth(availableMonths[0]);
+  }
 
   let monthStudentStats: any[] = [];
-  if (selectedMonth && monthlyStats[selectedMonth]) {
+  if (selectedMonth) {
     monthStudentStats = classroomStudents.map(student => {
-      const sRecords = monthlyStats[selectedMonth].records.filter((r: any) => r.studentId === student.id);
+      const sRecords = classroomAttendance.filter((r: any) => r.studentId === student.id && r.date.startsWith(selectedMonth));
       const present = sRecords.filter((r: any) => r.status === "present").length;
       const late = sRecords.filter((r: any) => r.status === "late").length;
       const absent = sRecords.filter((r: any) => r.status === "absent").length;
-      return { student, present, late, absent, total: sRecords.length };
-    }).filter(s => s.total > 0).sort((a, b) => b.absent - a.absent || b.late - a.late);
+      return { 
+        id: student.id,
+        name: student.name, 
+        rollNumber: student.rollNumber,
+        present, 
+        late, 
+        absent, 
+        total: sRecords.length 
+      };
+    });
   }
 
   if (!isLoaded) return null;
@@ -96,7 +103,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Left Card: Warnings (นร. ที่มีอัตราขาด/สายสูง) */}
-        <Card className="bg-white border shadow-sm md:col-span-1 border-rose-100 bg-rose-50/10">
+        <Card className="bg-card border shadow-sm md:col-span-1 border-rose-100 bg-rose-50/10">
           <CardHeader className="p-5 border-b border-rose-100/50">
             <CardTitle className="text-sm font-bold text-rose-700 flex items-center gap-2">
               <AlertTriangle className="h-4.5 w-4.5" />
@@ -116,7 +123,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
                 {flaggedStudents.map(({ student, absent, late, attendanceRate }) => (
                   <div 
                     key={student.id} 
-                    className="flex items-center justify-between p-2.5 rounded-lg border border-rose-100 bg-white shadow-xs"
+                    className="flex items-center justify-between p-2.5 rounded-lg border border-rose-100 bg-card shadow-xs"
                   >
                     <div>
                       <h4 className="text-xs font-bold text-foreground leading-tight">{student.name}</h4>
@@ -138,7 +145,7 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
         </Card>
 
         {/* Right Card: Overall stats table */}
-        <Card className="bg-white border shadow-sm md:col-span-2">
+        <Card className="bg-card border shadow-sm md:col-span-2">
           <CardHeader className="p-5 border-b flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-sm font-bold flex items-center gap-1.5">
@@ -188,98 +195,116 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
       </div>
 
       {/* 1.5. Monthly Statistics Graph (กราฟสถิติรายเดือน) */}
-      <Card className="bg-white border shadow-sm">
-        <CardHeader className="p-6 border-b">
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <PieChart className="h-5 w-5" />
-            {language === "th" ? "สถิติการเข้าเรียนรายเดือน" : "Monthly Attendance Stats"}
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">
-            {language === "th" ? "คลิกที่แท่งกราฟของเดือนที่ต้องการดูรายละเอียดนักเรียนว่าใครขาด/ลา/มาสายกี่ครั้งในเดือนนั้น" : "Click on a bar to view detailed student statistics for that month."}
-          </CardDescription>
+      <Card className="bg-card border shadow-sm">
+        <CardHeader className="p-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              {language === "th" ? "สถิติการเข้าเรียนรายเดือนของนักเรียน" : "Monthly Student Statistics"}
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground mt-1">
+              {language === "th" ? "แสดงจำนวนครั้งที่ ขาด ลา มาสาย ของนักเรียนแต่ละคนในเดือนที่เลือก" : "Displays attendance counts for each student in the selected month."}
+            </CardDescription>
+          </div>
+          {availableMonths.length > 0 && (
+            <select
+              className="border border-border bg-card text-foreground rounded-md px-3 py-1.5 text-sm font-bold shadow-sm"
+              value={selectedMonth || ""}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            >
+              {availableMonths.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          )}
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          {monthlyChartData.length === 0 ? (
+          {availableMonths.length === 0 ? (
             <p className="text-center py-8 text-sm text-muted-foreground italic">
-              {language === "th" ? "ยังไม่มีข้อมูลสถิติรายเดือน" : "No monthly statistics available."}
+              {language === "th" ? "ยังไม่มีข้อมูลสถิติ" : "No statistics available."}
             </p>
           ) : (
             <div className="space-y-8">
-              <div className="h-[300px] w-full cursor-pointer">
+              <div className="h-[400px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={monthlyChartData}
-                    margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
-                    onClick={(data) => {
-                      if (data && data.activeLabel) {
-                        setSelectedMonth(data.activeLabel === selectedMonth ? null : data.activeLabel);
-                      }
-                    }}
+                    data={monthStudentStats}
+                    margin={{ top: 20, right: 30, left: 0, bottom: 60 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888' }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888' }} />
+                    <XAxis 
+                      dataKey="name" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#888' }} 
+                      angle={-45}
+                      textAnchor="end"
+                    />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888' }} allowDecimals={false} />
                     <Tooltip 
                       cursor={{fill: '#f4f4f5'}}
                       contentStyle={{ borderRadius: '8px', border: '1px solid #f0f0f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
-                    <Bar dataKey="present" name={language === "th" ? "มาเรียน (คน-ครั้ง)" : "Present"} fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="late" name={language === "th" ? "มาสาย (คน-ครั้ง)" : "Late"} fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="absent" name={language === "th" ? "ขาดเรียน (คน-ครั้ง)" : "Absent"} fill="#e11d48" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="present" name={language === "th" ? "มาเรียน" : "Present"} stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="late" name={language === "th" ? "มาสาย" : "Late"} stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="absent" name={language === "th" ? "ขาดเรียน" : "Absent"} stackId="a" fill="#e11d48" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              {selectedMonth && (
-                <div className="border rounded-xl shadow-sm overflow-hidden bg-slate-50/30 animate-fadeIn">
-                  <div className="p-4 border-b bg-white flex justify-between items-center">
-                    <h3 className="font-bold text-sm text-foreground">
-                      {language === "th" ? `รายละเอียดเดือน ${selectedMonth}` : `Details for ${selectedMonth}`}
-                    </h3>
-                    <Badge variant="outline" className="text-xs bg-white cursor-pointer" onClick={() => setSelectedMonth(null)}>
-                      {language === "th" ? "ปิด" : "Close"}
-                    </Badge>
-                  </div>
-                  <Table>
-                    <TableHeader className="bg-white">
-                      <TableRow>
-                        <TableHead className="w-16">{t("rollNumberCol")}</TableHead>
-                        <TableHead>{t("studentNameCol")}</TableHead>
-                        <TableHead className="text-center w-20 text-emerald-600 font-bold">{t("presentBtn")}</TableHead>
-                        <TableHead className="text-center w-20 text-amber-500 font-bold">{t("lateBtn")}</TableHead>
-                        <TableHead className="text-center w-20 text-rose-500 font-bold">{t("absentBtn")}</TableHead>
+              <div className="border rounded-xl shadow-sm overflow-hidden bg-background animate-fadeIn">
+                <Table>
+                  <TableHeader className="bg-card">
+                    <TableRow>
+                      <TableHead className="w-16">{t("rollNumberCol")}</TableHead>
+                      <TableHead>{t("studentNameCol")}</TableHead>
+                      <TableHead className="text-center w-20 text-emerald-600 font-bold">{t("presentBtn")}</TableHead>
+                      <TableHead className="text-center w-20 text-amber-500 font-bold">{t("lateBtn")}</TableHead>
+                      <TableHead className="text-center w-20 text-rose-500 font-bold">{t("absentBtn")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {monthStudentStats.sort((a,b) => b.absent - a.absent || b.late - a.late).map((st) => (
+                      <TableRow key={st.id} className="hover:bg-muted/10 transition-colors">
+                        <TableCell className="font-bold text-xs">{st.rollNumber}</TableCell>
+                        <TableCell className="font-bold text-xs">{st.name}</TableCell>
+                        <TableCell className="text-center text-xs font-semibold">{st.present}</TableCell>
+                        <TableCell className="text-center text-xs font-semibold">{st.late}</TableCell>
+                        <TableCell className="text-center text-xs font-semibold text-rose-600">{st.absent}</TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {monthStudentStats.map(({ student, present, late, absent }) => (
-                        <TableRow key={student.id} className="hover:bg-white/50 transition-colors">
-                          <TableCell className="font-bold text-xs">{student.rollNumber}</TableCell>
-                          <TableCell className="font-bold text-xs">{student.name}</TableCell>
-                          <TableCell className="text-center text-xs font-semibold">{present}</TableCell>
-                          <TableCell className="text-center text-xs font-semibold">{late}</TableCell>
-                          <TableCell className="text-center text-xs font-semibold text-rose-600">{absent}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
       
       {/* 2. Daily Log / Archive (ประวัติเช็กชื่อย้อนหลังรายวัน) */}
-      <Card className="bg-white border shadow-sm">
-        <CardHeader className="p-6 border-b">
-          <CardTitle className="text-lg font-bold flex items-center gap-2">
-            <CalendarDays className="h-5 w-5" />
-            {language === "th" ? "บันทึกประวัติการเช็กชื่อย้อนหลัง" : "Attendance Daily Archives"}
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">
-            {language === "th" ? "เลือกวันที่ที่เคยเช็กชื่อเพื่อตรวจสอบรายชื่อนักเรียนในวันนั้น" : "Select a date to expand historical daily logs."}
-          </CardDescription>
+      <Card className="bg-card border shadow-sm">
+        <CardHeader className="p-6 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <CalendarDays className="h-5 w-5" />
+              {language === "th" ? "บันทึกประวัติการเช็กชื่อย้อนหลังรายวัน" : "Daily Attendance Archive"}
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground mt-1">
+              {language === "th" ? "เลือกวันที่ที่เคยเช็กชื่อเพื่อตรวจสอบรายชื่อนักเรียนในวันนั้น" : "Select a date to view the attendance log for that specific day."}
+            </CardDescription>
+          </div>
+          {attendanceDates.length > 0 && (
+            <select
+              className="border border-border bg-card text-foreground rounded-md px-3 py-1.5 text-sm font-bold shadow-sm"
+              value={selectedHistoryDate || ""}
+              onChange={(e) => setSelectedHistoryDate(e.target.value)}
+            >
+              {attendanceDates.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          )}
         </CardHeader>
         <CardContent className="p-4 space-y-3">
           {attendanceDates.length === 0 ? (
@@ -287,91 +312,77 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
               {language === "th" ? "ยังไม่มีบันทึกประวัติการเช็กชื่อสำหรับห้องนี้" : "No daily records exist for this classroom yet."}
             </p>
           ) : (
-            attendanceDates.map((date) => {
-              const dayRecords = classroomAttendance.filter((a) => a.date === date);
-              const presentCount = dayRecords.filter((r) => r.status === "present").length;
-              const lateCount = dayRecords.filter((r) => r.status === "late").length;
-              const absentCount = dayRecords.filter((r) => r.status === "absent").length;
-              const isExpanded = expandedDate === date;
-
-              return (
-                <div 
-                  key={date} 
-                  className="border rounded-xl bg-white overflow-hidden transition-all shadow-xs"
-                >
-                  {/* Date Header Accordion Trigger */}
-                  <div 
-                    onClick={() => setExpandedDate(isExpanded ? null : date)}
-                    className="flex items-center justify-between p-4 bg-muted/10 hover:bg-muted/30 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <CalendarDays className="h-4.5 w-4.5 text-zinc-500" />
-                      <span className="font-bold text-sm text-foreground">{date}</span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      {/* Count Overview Badges */}
-                      <div className="hidden sm:flex gap-2">
-                        <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-bold text-[10px]">
-                          {language === "th" ? "มา" : "P"} {presentCount}
-                        </Badge>
-                        <Badge className="bg-amber-500/10 text-amber-600 border-none font-bold text-[10px]">
-                          {language === "th" ? "สาย" : "L"} {lateCount}
-                        </Badge>
-                        <Badge className="bg-rose-500/10 text-rose-600 border-none font-bold text-[10px]">
-                          {language === "th" ? "ขาด" : "A"} {absentCount}
-                        </Badge>
-                      </div>
-                      {isExpanded ? <ChevronUp className="h-4 w-4 text-zinc-400" /> : <ChevronDown className="h-4 w-4 text-zinc-400" />}
-                    </div>
+            selectedHistoryDate && (
+              <div className="border rounded-xl bg-card overflow-hidden transition-all shadow-xs animate-fadeIn">
+                <div className="flex items-center justify-between p-4 bg-muted/10 border-b border-border">
+                  <div className="flex items-center gap-2.5">
+                    <CalendarDays className="h-4.5 w-4.5 text-muted-foreground" />
+                    <span className="font-bold text-sm text-foreground">
+                      {language === "th" ? `ข้อมูลวันที่: ${selectedHistoryDate}` : `Date: ${selectedHistoryDate}`}
+                    </span>
                   </div>
 
-                  {/* Expanded Table view */}
-                  {isExpanded && (
-                    <div className="p-4 border-t bg-slate-50/20 animate-fadeIn">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-16">{t("rollNumberCol")}</TableHead>
-                            <TableHead>{t("studentNameCol")}</TableHead>
-                            <TableHead className="text-right w-36">{t("attendanceStatusCol")}</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {classroomStudents.map((st) => {
-                            const rec = dayRecords.find((r) => r.studentId === st.id);
-                            const status = rec ? rec.status : "present";
-                            return (
-                              <TableRow key={st.id} className="hover:bg-transparent">
-                                <TableCell className="font-bold text-xs">{st.rollNumber}</TableCell>
-                                <TableCell className="font-bold text-xs">{st.name}</TableCell>
-                                <TableCell className="text-right">
-                                  {status === "present" && (
-                                    <span className="inline-flex items-center text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-                                      {t("presentBtn")}
-                                    </span>
-                                  )}
-                                  {status === "late" && (
-                                    <span className="inline-flex items-center text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
-                                      {t("lateBtn")}
-                                    </span>
-                                  )}
-                                  {status === "absent" && (
-                                    <span className="inline-flex items-center text-[10px] font-black text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full">
-                                      {t("absentBtn")}
-                                    </span>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                  <div className="flex items-center gap-4">
+                    {/* Count Overview Badges */}
+                    <div className="flex gap-2">
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-none font-bold text-[10px]">
+                        {language === "th" ? "มา" : "P"} {classroomAttendance.filter(a => a.date === selectedHistoryDate && a.status === "present").length}
+                      </Badge>
+                      <Badge className="bg-amber-500/10 text-amber-600 border-none font-bold text-[10px]">
+                        {language === "th" ? "สาย" : "L"} {classroomAttendance.filter(a => a.date === selectedHistoryDate && a.status === "late").length}
+                      </Badge>
+                      <Badge className="bg-rose-500/10 text-rose-600 border-none font-bold text-[10px]">
+                        {language === "th" ? "ขาด" : "A"} {classroomAttendance.filter(a => a.date === selectedHistoryDate && a.status === "absent").length}
+                      </Badge>
                     </div>
-                  )}
+                  </div>
                 </div>
-              );
-            })
+
+                <div className="p-0 bg-background/20">
+                  <Table>
+                    <TableHeader className="bg-card">
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="w-16">{t("rollNumberCol")}</TableHead>
+                        <TableHead>{t("studentNameCol")}</TableHead>
+                        <TableHead className="text-right w-44">{t("attendanceStatusCol")}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {classroomStudents.map((st) => {
+                        const rec = classroomAttendance.find((r) => r.studentId === st.id && r.date === selectedHistoryDate);
+                        const status = rec ? rec.status : "present";
+                        return (
+                          <TableRow key={st.id} className="hover:bg-transparent">
+                            <TableCell className="font-bold text-xs">{st.rollNumber}</TableCell>
+                            <TableCell className="font-bold text-xs">{st.name}</TableCell>
+                            <TableCell className="text-right">
+                              {status === "present" && (
+                                <span className="inline-flex items-center text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
+                                  {t("presentBtn")}
+                                </span>
+                              )}
+                              {status === "late" && (
+                                <span className="inline-flex items-center text-[10px] font-black text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+                                  {t("lateBtn")}
+                                </span>
+                              )}
+                              {status === "absent" && (
+                                <span className="inline-flex items-center text-[10px] font-black text-rose-600 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-full gap-1">
+                                  {t("absentBtn")}
+                                  {rec?.reason === "leave_personal" && ` (${language === "th" ? "ลากิจ" : "Personal"})`}
+                                  {rec?.reason === "leave_sick" && ` (${language === "th" ? "ป่วย" : "Sick"})`}
+                                  {rec?.reason === "no_show" && ` (${language === "th" ? "ไม่มา" : "No Show"})`}
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )
           )}
         </CardContent>
       </Card>

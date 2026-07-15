@@ -68,22 +68,22 @@ export default function AdminPage() {
 
   if (!isLoaded) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-900">
+      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 relative overflow-hidden selection:bg-black selection:text-white">
+    <div className="min-h-screen bg-background text-foreground relative overflow-hidden selection:bg-primary selection:text-primary-foreground">
       {/* Subtle light grid pattern background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#e4e4e7_1px,transparent_1px),linear-gradient(to_bottom,#e4e4e7_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-50 pointer-events-none"></div>
 
       {/* Header */}
-      <header className="border-b border-zinc-200 bg-white/80 backdrop-blur sticky top-0 z-40 relative">
+      <header className="border-b border-border bg-card/80 backdrop-blur sticky top-0 z-40 relative">
         <div className="mx-auto max-w-7xl px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-black p-2 rounded-xl text-white shadow-sm">
+            <div className="bg-primary p-2 rounded-xl text-primary-foreground shadow-sm">
               <GraduationCap className="h-6 w-6" />
             </div>
             <div>
@@ -101,14 +101,14 @@ export default function AdminPage() {
             <Button
               variant="ghost"
               onClick={toggleLanguage}
-              className="text-zinc-500 hover:text-black font-bold gap-1 cursor-pointer h-9 px-3 text-sm"
+              className="text-muted-foreground hover:text-black font-bold gap-1 cursor-pointer h-9 px-3 text-sm"
             >
               <Globe className="h-4 w-4" />
               {language === "th" ? "EN" : "TH"}
             </Button>
 
             <Link href="/dashboard">
-              <Button variant="outline" className="border-zinc-200 text-zinc-700 hover:bg-zinc-100 hover:text-black flex items-center gap-1.5 h-9 rounded-lg cursor-pointer">
+              <Button variant="outline" className="border-border text-zinc-700 hover:bg-muted hover:text-black flex items-center gap-1.5 h-9 rounded-lg cursor-pointer">
                 <ArrowLeft className="h-4 w-4" />
                 {language === "th" ? "กลับหน้าครูผู้สอน" : "Back to Teacher View"}
               </Button>
@@ -132,28 +132,28 @@ export default function AdminPage() {
 
         {/* System Overview Stats (Stark light cards) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <Card className="bg-white border-zinc-200 text-foreground shadow-sm">
+          <Card className="bg-card border-border text-foreground shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <Users className="h-5 w-5 text-zinc-400" />
+                <Users className="h-5 w-5 text-muted-foreground" />
                 <span className="text-2xl font-black">{firebaseTeachers.length}</span>
               </div>
-              <h4 className="text-xs font-bold text-zinc-500 mt-4 uppercase">
+              <h4 className="text-xs font-bold text-muted-foreground mt-4 uppercase">
                 {language === "th" ? "คุณครูสมัครใช้งานสะสม" : "Total Teachers"}
               </h4>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-zinc-200 text-foreground shadow-sm">
+          <Card className="bg-card border-border text-foreground shadow-sm">
             <CardContent className="p-6">
               <div className="flex justify-between items-start">
                 <div className="flex items-center justify-between w-full">
-                  <BookOpen className="h-5 w-5 text-zinc-400" />
+                  <BookOpen className="h-5 w-5 text-muted-foreground" />
                   <span className="text-2xl font-black">{subjects.length}</span>
                 </div>
               </div>
               <div className="flex flex-col gap-2 mt-4">
-                <h4 className="text-xs font-bold text-zinc-500 uppercase">
+                <h4 className="text-xs font-bold text-muted-foreground uppercase">
                   {language === "th" ? "วิชาเรียนทั้งหมดในระบบ" : "Total System Subjects"}
                 </h4>
                 <Button 
@@ -189,25 +189,25 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-zinc-200 text-foreground shadow-sm">
+          <Card className="bg-card border-border text-foreground shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <GraduationCap className="h-5 w-5 text-zinc-400" />
+                <GraduationCap className="h-5 w-5 text-muted-foreground" />
                 <span className="text-2xl font-black">{classrooms.length}</span>
               </div>
-              <h4 className="text-xs font-bold text-zinc-500 mt-4 uppercase">
+              <h4 className="text-xs font-bold text-muted-foreground mt-4 uppercase">
                 {language === "th" ? "ห้องเรียนทั้งหมดในระบบ" : "Total System Classrooms"}
               </h4>
             </CardContent>
           </Card>
 
-          <Card className="bg-white border-zinc-200 text-foreground shadow-sm">
+          <Card className="bg-card border-border text-foreground shadow-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <ShieldCheck className="h-5 w-5 text-zinc-400" />
+                <ShieldCheck className="h-5 w-5 text-muted-foreground" />
                 <span className="text-2xl font-black">{students.length}</span>
               </div>
-              <h4 className="text-xs font-bold text-zinc-500 mt-4 uppercase">
+              <h4 className="text-xs font-bold text-muted-foreground mt-4 uppercase">
                 {language === "th" ? "จำนวนนักเรียนรวม" : "Total Enrolled Students"}
               </h4>
             </CardContent>
@@ -215,8 +215,8 @@ export default function AdminPage() {
         </div>
 
         {/* Teachers Table (Stark Light Monochrome Style) */}
-        <Card className="bg-white border-zinc-200 text-foreground shadow-sm">
-          <CardHeader className="p-6 border-b border-zinc-100">
+        <Card className="bg-card border-border text-foreground shadow-sm">
+          <CardHeader className="p-6 border-b border-border">
             <CardTitle className="text-lg font-bold">
               {language === "th" ? "ข้อมูลคุณครูและประวัติจริงในระบบ" : "Live Teacher Registry Audits"}
             </CardTitle>
@@ -228,21 +228,21 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent className="p-0">
             <Table>
-              <TableHeader className="border-b border-zinc-100 bg-zinc-50/50">
-                <TableRow className="border-b border-zinc-100 hover:bg-transparent">
-                  <TableHead className="text-zinc-500 font-bold px-6 py-3">
+              <TableHeader className="border-b border-border bg-background/50">
+                <TableRow className="border-b border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground font-bold px-6 py-3">
                     {language === "th" ? "ชื่อครูผู้ใช้งาน" : "Teacher Identity"}
                   </TableHead>
-                  <TableHead className="text-zinc-500 font-bold px-6 py-3 text-center">
+                  <TableHead className="text-muted-foreground font-bold px-6 py-3 text-center">
                     {language === "th" ? "วิชาเรียน" : "Subjects"}
                   </TableHead>
-                  <TableHead className="text-zinc-500 font-bold px-6 py-3 text-center">
+                  <TableHead className="text-muted-foreground font-bold px-6 py-3 text-center">
                     {language === "th" ? "ห้องเรียน" : "Classrooms"}
                   </TableHead>
-                  <TableHead className="text-zinc-500 font-bold px-6 py-3 text-center">
+                  <TableHead className="text-muted-foreground font-bold px-6 py-3 text-center">
                     {language === "th" ? "นักเรียนรวม" : "Students"}
                   </TableHead>
-                  <TableHead className="text-zinc-500 font-bold px-6 py-3 text-right">
+                  <TableHead className="text-muted-foreground font-bold px-6 py-3 text-right">
                     {language === "th" ? "การจัดการ" : "Action"}
                   </TableHead>
                 </TableRow>
@@ -268,11 +268,11 @@ export default function AdminPage() {
                   const teacherStudents = students.filter(s => teacherClassroomIds.includes(s.classroomId));
 
                   return (
-                    <TableRow key={teacher.id} className="border-b border-zinc-100 hover:bg-zinc-50/20">
+                    <TableRow key={teacher.id} className="border-b border-border hover:bg-background/20">
                       <TableCell className="px-6 py-4">
                         <div className="font-bold text-foreground">{teacher.name}</div>
                         <div className="text-xs text-muted-foreground font-mono mt-0.5">{teacher.email}</div>
-                        <div className="text-[10px] text-zinc-400 mt-1">{teacher.school}</div>
+                        <div className="text-[10px] text-muted-foreground mt-1">{teacher.school}</div>
                       </TableCell>
 
                       <TableCell className="text-center font-bold text-sm px-6 py-4">{teacherSubjects.length}</TableCell>
