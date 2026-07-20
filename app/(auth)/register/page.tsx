@@ -59,34 +59,17 @@ export default function RegisterPage() {
     setLoading(true);
     
     try {
-      const { db } = await import("@/lib/firebase");
-      const { collection, addDoc, getDocs, query, where } = await import("firebase/firestore");
+      const success = await registerTeacher(name, email, school, password);
       
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
+      if (!success) {
         setError(t("registerErrorExists"));
         setLoading(false);
         return;
       }
-      
-      await addDoc(collection(db, "users"), {
-        name,
-        email,
-        school,
-        password,
-        createdAt: new Date().toISOString()
-      });
-      
-      registerTeacher(name, email, school, password);
 
       setLoading(false);
-
       setSuccess(t("registerSuccess"));
       
-      // Clear inputs
       setName("");
       setEmail("");
       setSchool("");

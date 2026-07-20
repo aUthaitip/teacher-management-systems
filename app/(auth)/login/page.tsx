@@ -30,37 +30,12 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const { db } = await import("@/lib/firebase");
-      const { collection, query, where, getDocs } = await import("firebase/firestore");
-      
-      const q = query(collection(db, "users"), where("email", "==", email), where("password", "==", password));
-      const snapshot = await getDocs(q);
-
-      if (snapshot.empty) {
+      const success = await loginTeacher(email, password);
+      if (success) {
+        window.location.href = "/dashboard";
+      } else {
         setError(t("loginErrorInvalid"));
         setLoading(false);
-      } else {
-        const userData = snapshot.docs[0].data();
-        
-        // Force sync with local context so the rest of the app works
-        // Try to login first, if it fails, it means the user was registered on another device
-        // so we register them locally then login
-        const success = loginTeacher(email, password);
-        if (!success) {
-          // Login failed to sync with local context. Continue by saving current teacher data directly.
-        }
-        
-        // Save directly to localStorage to bypass local array issues
-        const teacherData = {
-          id: snapshot.docs[0].id,
-          name: userData.name,
-          email: userData.email,
-          school: userData.school
-        };
-        localStorage.setItem("tms_currentTeacher", JSON.stringify(teacherData));
-        
-        // Force refresh to dashboard to load the new context
-        window.location.href = "/dashboard";
       }
     } catch (err) {
       console.error(err);

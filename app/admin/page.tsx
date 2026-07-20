@@ -26,7 +26,7 @@ interface FirebaseUser {
 }
 
 export default function AdminPage() {
-  const { deleteTeacher, currentTeacher, teachers, subjects, classrooms, students, isLoaded } = useApp();
+  const { deleteTeacher, currentTeacher, subjects, classrooms, students, isLoaded } = useApp();
   const { language, toggleLanguage } = useLanguage();
 
   const [firebaseTeachers, setFirebaseTeachers] = useState<FirebaseUser[]>([]);
@@ -257,11 +257,7 @@ export default function AdminPage() {
                 ) : firebaseTeachers.map((teacher) => {
                   // Calculate statistics based on real relations
                   // Fallback: match by local ID if they created subjects before Firebase ID migration
-                  const localTeacher = teachers.find(t => t.email.toLowerCase() === teacher.email.toLowerCase());
-                  const possibleIds = [teacher.id];
-                  if (localTeacher) possibleIds.push(localTeacher.id);
-
-                  const teacherSubjects = subjects.filter(s => s.teacherIds.some(id => possibleIds.includes(id)));
+                  const teacherSubjects = subjects.filter(s => s.teacherIds.includes(teacher.id));
                   const teacherSubjIds = teacherSubjects.map(s => s.id);
                   const teacherClassrooms = classrooms.filter(c => teacherSubjIds.includes(c.subjectId));
                   const teacherClassroomIds = teacherClassrooms.map(c => c.id);

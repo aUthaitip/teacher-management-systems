@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, where, deleteDoc, updateDoc } from "firebase/firestore";
 
 // Types
 export interface Teacher {
@@ -65,11 +65,11 @@ interface AppContextType {
   isLoaded: boolean;
   
   // Actions
-  loginTeacher: (email: string, password: string) => boolean;
-  registerTeacher: (name: string, email: string, school: string, password: string) => boolean;
+  loginTeacher: (email: string, password: string) => Promise<boolean>;
+  registerTeacher: (name: string, email: string, school: string, password: string) => Promise<boolean>;
   logoutTeacher: () => void;
-  updateProfile: (name: string, email: string, school: string, avatar?: string) => void;
-  deleteTeacher: (id: string) => void;
+  updateProfile: (name: string, email: string, school: string, avatar?: string) => Promise<void>;
+  deleteTeacher: (id: string) => Promise<void>;
   
   // Subject Actions
   addSubject: (name: string, code: string, gradeLevel: string) => void;
@@ -139,7 +139,7 @@ function safeSetItem(key: string, value: unknown) {
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teachers] = useState<Teacher[]>([]);
   const [currentTeacher, setCurrentTeacher] = useState<Teacher | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
@@ -150,7 +150,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Load from localStorage
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const storedTeachers = localStorage.getItem("tms_teachers");
+
       const storedTeacher = localStorage.getItem("tms_currentTeacher");
       const storedSubjects = localStorage.getItem("tms_subjects");
       const storedClassrooms = localStorage.getItem("tms_classrooms");
@@ -158,7 +158,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const storedAttendance = localStorage.getItem("tms_attendance");
       const storedScores = localStorage.getItem("tms_scores");
 
-      setTeachers(safeParse(storedTeachers, initialTeachers));
+
       // NOTE: previously this fell back to `initialTeachers[0]`, which is
       // `undefined` since initialTeachers is an empty array. That undefined
       // got saved via JSON.stringify -> the string "undefined" -> crash on
@@ -208,7 +208,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Save to localStorage whenever states change
   useEffect(() => {
     if (isLoaded) {
-      safeSetItem("tms_teachers", teachers);
+
       safeSetItem("tms_currentTeacher", currentTeacher);
       safeSetItem("tms_subjects", subjects);
       safeSetItem("tms_classrooms", classrooms);
@@ -236,42 +236,64 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         syncToFirebase();
       }
     }
-  }, [teachers, currentTeacher, subjects, classrooms, students, attendance, scores, isLoaded]);
+  }, [currentTeacher, subjects, classrooms, students, attendance, scores, isLoaded]);
 
   // Actions
-  const loginTeacher = (email: string, password: string): boolean => {
-    // Basic password validation
-    const teacher = teachers.find(t => t.email.toLowerCase() === email.toLowerCase());
-    if (teacher && password === "password123") { // Mock password
+  const loginTeacher = async (email: string, password: string): Promise<boolean> => {
+    try {
+      // ค้นหาครูจาก Firestore collection "users" โดยเช็ค email + password
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email), where("password", "==", password));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        return false; // ไม่พบ email หรือ password ผิด
+      }
+
+      // สร้าง Teacher object จากข้อมูล Firestore (ใช้ document ID เป็น teacher ID)
+      const userData = snapshot.docs[0];
+      const teacher: Teacher = {
+        id: userData.id,
+        name: userData.data().name,
+        email: userData.data().email,
+        school: userData.data().school,
+        avatar: userData.data().avatar,
+      };
+
       setCurrentTeacher(teacher);
       safeSetItem("tms_currentTeacher", teacher);
       return true;
+    } catch (error) {
+      console.error("Error logging in:", error);
+      return false;
     }
-    // Allow custom login for newly registered teachers
-    const newlyRegistered = teachers.find(t => t.email.toLowerCase() === email.toLowerCase());
-    if (newlyRegistered) {
-      setCurrentTeacher(newlyRegistered);
-      safeSetItem("tms_currentTeacher", newlyRegistered);
-      return true;
-    }
-    return false;
   };
 
-  const registerTeacher = (name: string, email: string, school: string, password: string): boolean => {
-    if (teachers.some(t => t.email.toLowerCase() === email.toLowerCase())) {
-      return false; // Email already exists
+  const registerTeacher = async (name: string, email: string, school: string, password: string): Promise<boolean> => {
+    try {
+      // เช็คว่า email ซ้ำไหมใน Firestore
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        return false; // Email ซ้ำ
+      }
+
+      // เขียนลง Firestore collection "users"
+      await addDoc(usersRef, {
+        name,
+        email,
+        school,
+        password,
+        createdAt: new Date().toISOString(),
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Error registering teacher:", error);
+      return false;
     }
-    const newTeacher: Teacher = {
-      id: `teacher-${Date.now()}`,
-      name,
-      email,
-      school,
-      avatar: `https://images.unsplash.com/photo-${1573496359142 + Math.floor(Math.random() * 1000)}?q=80&w=200&auto=format&fit=crop`,
-    };
-    const updatedTeachers = [...teachers, newTeacher];
-    setTeachers(updatedTeachers);
-    safeSetItem("tms_teachers", updatedTeachers);
-    return true;
   };
 
   const logoutTeacher = () => {
@@ -279,46 +301,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("tms_currentTeacher");
   };
 
-  const updateProfile = (name: string, email: string, school: string, avatar?: string) => {
+  const updateProfile = async (name: string, email: string, school: string, avatar?: string): Promise<void> => {
     if (!currentTeacher) return;
-    const updated = { ...currentTeacher, name, email, school, avatar };
-    setCurrentTeacher(updated);
-    setTeachers(prev => prev.map(t => t.id === updated.id ? updated : t));
+    try {
+      // อัปเดตใน Firestore
+      const teacherRef = doc(db, "users", currentTeacher.id);
+      await updateDoc(teacherRef, { name, email, school, ...(avatar !== undefined && { avatar }) });
+
+      // อัปเดต local state
+      const updated = { ...currentTeacher, name, email, school, avatar };
+      setCurrentTeacher(updated);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    }
   };
 
-  const deleteTeacher = (id: string) => {
-    setTeachers(prev => prev.filter(t => t.id !== id));
-    if (currentTeacher?.id === id) {
-      setCurrentTeacher(null);
-      localStorage.removeItem("tms_currentTeacher");
-    }
+  const deleteTeacher = async (id: string): Promise<void> => {
+    try {
+      // ลบจาก Firestore
+      await deleteDoc(doc(db, "users", id));
 
-    // Cascade delete all data related to this teacher
-    setSubjects(prev => {
-      const teacherSubjects = prev.filter(s => s.teacherIds.includes(id));
-      const subjIdsToRemove = teacherSubjects.map(s => s.id);
-      
-      if (subjIdsToRemove.length === 0) return prev;
+      if (currentTeacher?.id === id) {
+        setCurrentTeacher(null);
+        localStorage.removeItem("tms_currentTeacher");
+      }
 
-      // Keep only subjects that don't belong to the deleted teacher
-      const remainingSubjects = prev.filter(s => !subjIdsToRemove.includes(s.id));
+      // Cascade delete all data related to this teacher
+      setSubjects(prev => {
+        const teacherSubjects = prev.filter(s => s.teacherIds.includes(id));
+        const subjIdsToRemove = teacherSubjects.map(s => s.id);
+        
+        if (subjIdsToRemove.length === 0) return prev;
 
-      setClassrooms(prevClassrooms => {
-        const classroomsToRemove = prevClassrooms.filter(c => subjIdsToRemove.includes(c.subjectId));
-        const classIdsToRemove = classroomsToRemove.map(c => c.id);
+        const remainingSubjects = prev.filter(s => !subjIdsToRemove.includes(s.id));
 
-        if (classIdsToRemove.length > 0) {
-          // Remove students, attendance, and scores for these classrooms
-          setStudents(prevStudents => prevStudents.filter(st => !classIdsToRemove.includes(st.classroomId)));
-          setAttendance(prevAtt => prevAtt.filter(a => !classIdsToRemove.includes(a.classroomId)));
-          setScores(prevScores => prevScores.filter(sc => !classIdsToRemove.includes(sc.classroomId)));
-        }
+        setClassrooms(prevClassrooms => {
+          const classroomsToRemove = prevClassrooms.filter(c => subjIdsToRemove.includes(c.subjectId));
+          const classIdsToRemove = classroomsToRemove.map(c => c.id);
 
-        return prevClassrooms.filter(c => !classIdsToRemove.includes(c.id));
+          if (classIdsToRemove.length > 0) {
+            setStudents(prevStudents => prevStudents.filter(st => !classIdsToRemove.includes(st.classroomId)));
+            setAttendance(prevAtt => prevAtt.filter(a => !classIdsToRemove.includes(a.classroomId)));
+            setScores(prevScores => prevScores.filter(sc => !classIdsToRemove.includes(sc.classroomId)));
+          }
+
+          return prevClassrooms.filter(c => !classIdsToRemove.includes(c.id));
+        });
+
+        return remainingSubjects;
       });
-
-      return remainingSubjects;
-    });
+    } catch (error) {
+      console.error("Error deleting teacher:", error);
+    }
   };
 
   // Subject Actions
