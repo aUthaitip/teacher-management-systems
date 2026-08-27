@@ -104,7 +104,10 @@ export function HistoryTab({ classroomId }: HistoryTabProps) {
 
   // Filter attendance by selected term for overall stats
   const termAttendance = activeTerm 
-    ? classroomAttendance.filter(a => getTermFromDate(a.date).label === activeTerm)
+    ? classroomAttendance.filter(a => {
+        const term = getTermFromDate(a.date);
+        return term && typeof term === "object" && term.label === activeTerm;
+      })
     : classroomAttendance;
 
   // Get list of unique dates sorted descending

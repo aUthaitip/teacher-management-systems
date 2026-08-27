@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "@/lib/AppContext";
 import { useLanguage } from "@/lib/LanguageContext";
-import { Plus, Trash2, Award, Save, Check, XCircle } from "lucide-react";
+import { Plus, Trash2, Award, Save, Check, XCircle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 interface ScoresTabProps {
   classroomId: string;
@@ -36,12 +37,14 @@ export function ScoresTab({ classroomId }: ScoresTabProps) {
     addScoreChapter, 
     updateStudentScores, 
     deleteScoreChapter,
+    currentTeacher,
     isLoaded 
   } = useApp();
   
   const { t } = useLanguage();
 
   const [selectedChapterId, setSelectedChapterId] = useState<string>("");
+  const [isSendingTelegram, setIsSendingTelegram] = useState(false);
   const [isChapterModalOpen, setIsChapterModalOpen] = useState(false);
   const [newChapterName, setNewChapterName] = useState("");
   const [newTotalScore, setNewTotalScore] = useState<number>(100);
@@ -108,6 +111,49 @@ export function ScoresTab({ classroomId }: ScoresTabProps) {
     }
     updateStudentScores(selectedChapterId, currentChapterScores);
     alert(t("scoresSavedAlert"));
+  };
+
+  const handleSendTelegramNotifications = async () => {
+    if (!currentChapter) return;
+    if (!currentTeacher?.telegramBotToken) {
+      alert("กรุณาตั้งค่า Telegram Bot Token ในหน้าโปรไฟล์ของคุณก่อน");
+      return;
+    }
+
+    const connectedStudents = classroomStudents.filter(s => s.parentTelegramChatId);
+    if (connectedStudents.length === 0) {
+      alert("ไม่มีนักเรียนที่เชื่อมต่อ Telegram ของผู้ปกครองในห้องเรียนนี้");
+      return;
+    }
+
+    if (!confirm(`คุณต้องการส่งแจ้งเตือนคะแนนวิชาเรียนบทนี้ ไปยังผู้ปกครองที่เชื่อมต่อแล้วจำนวน ${connectedStudents.length} คน ใช่หรือไม่?`)) {
+      return;
+    }
+
+    setIsSendingTelegram(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const student of connectedStudents) {
+      const score = currentChapterScores[student.id] !== undefined ? currentChapterScores[student.id] : 0;
+      const isPassed = score >= currentChapter.passingScore;
+      const message = `🔔 *แจ้งเตือนคะแนนสอบห้องเรียน*\n\n` +
+        `👤 *นักเรียน:* ${student.name} (เลขที่ ${student.rollNumber})\n` +
+        `📚 *บทเรียน/การประเมิน:* ${currentChapter.chapterName}\n` +
+        `📝 *คะแนนที่ได้:* *${score}* / ${currentChapter.totalScore} คะแนน\n` +
+        `📊 *ผลการประเมิน:* ${isPassed ? "🟢 *ผ่านเกณฑ์*" : "🔴 *ไม่ผ่านเกณฑ์*"}\n\n` +
+        `_ส่งโดยระบบจัดการชั้นเรียนของคุณครู ${currentTeacher.name}_`;
+
+      const success = await sendTelegramMessage(currentTeacher.telegramBotToken, student.parentTelegramChatId!, message);
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    setIsSendingTelegram(false);
+    alert(`ส่งข้อความสำเร็จ: ${successCount} รายการ${failCount > 0 ? `, ล้มเหลว: ${failCount} รายการ` : ""}`);
   };
 
   if (!isLoaded) return null;
@@ -231,10 +277,20 @@ export function ScoresTab({ classroomId }: ScoresTabProps) {
                 <span>{t("passingMinLabel")} <strong className="text-primary font-bold">&ge; {currentChapter.passingScore}</strong> {t("passingScoreMin")}</span>
               </div>
             </div>
-            <Button onClick={handleSaveScores} className="flex items-center gap-1 text-sm h-8">
-              <Save className="h-4 w-4" />
-              {t("saveScoresBtn")}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleSendTelegramNotifications} 
+                disabled={isSendingTelegram}
+                className="flex items-center gap-1 text-sm h-8 bg-sky-600 hover:bg-sky-700 text-white font-bold"
+              >
+                <Send className="h-4 w-4" />
+                {isSendingTelegram ? "กำลังส่ง..." : "ส่งคะแนนเข้า Telegram"}
+              </Button>
+              <Button onClick={handleSaveScores} className="flex items-center gap-1 text-sm h-8">
+                <Save className="h-4 w-4" />
+                {t("saveScoresBtn")}
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {classroomStudents.length === 0 ? (

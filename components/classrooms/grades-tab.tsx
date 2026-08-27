@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useApp } from "@/lib/AppContext";
 import { useLanguage } from "@/lib/LanguageContext";
-import { Calculator, Upload, Download, Settings, Save, FileSpreadsheet } from "lucide-react";
+import { Calculator, Upload, Download, Settings, Save, FileSpreadsheet, Send } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,14 +18,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 interface GradesTabProps {
   classroomId: string;
 }
 
 export function GradesTab({ classroomId }: GradesTabProps) {
-  const { students, scores, classrooms, updateClassroomGradeSettings, addScoreChapter, updateStudentScores, isLoaded } = useApp();
+  const { students, scores, classrooms, updateClassroomGradeSettings, addScoreChapter, updateStudentScores, currentTeacher, isLoaded } = useApp();
   const { language, t } = useLanguage();
+  const [isSendingTelegram, setIsSendingTelegram] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const classroom = classrooms.find(c => c.id === classroomId);
@@ -165,6 +167,50 @@ export function GradesTab({ classroomId }: GradesTabProps) {
     setIsSettingsOpen(false);
   };
 
+  const handleSendTelegramGrades = async () => {
+    if (!currentTeacher?.telegramBotToken) {
+      alert("กรุณาตั้งค่า Telegram Bot Token ในหน้าโปรไฟล์ของคุณก่อน");
+      return;
+    }
+
+    const connectedStudents = classroomStudents.filter(s => s.parentTelegramChatId);
+    if (connectedStudents.length === 0) {
+      alert("ไม่มีนักเรียนที่เชื่อมต่อ Telegram ของผู้ปกครองในห้องเรียนนี้");
+      return;
+    }
+
+    if (!confirm(`คุณต้องการส่งรายงานสรุปผลการเรียนและเกรดเฉลี่ย ไปยังผู้ปกครองที่เชื่อมต่อแล้วจำนวน ${connectedStudents.length} คน ใช่หรือไม่?`)) {
+      return;
+    }
+
+    setIsSendingTelegram(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const student of connectedStudents) {
+      const total = studentTotals[student.id] || 0;
+      const pct = maxPossibleScore > 0 ? ((total / maxPossibleScore) * 100).toFixed(1) : "0.0";
+      const finalGrade = getGrade(total).grade;
+      
+      const message = `📊 *รายงานผลการเรียนปลายภาคเรียน*\n\n` +
+        `👤 *นักเรียน:* ${student.name} (เลขที่ ${student.rollNumber})\n` +
+        `🏫 *ห้องเรียน:* ${classroom?.name || "ไม่ระบุ"}\n` +
+        `📝 *คะแนนรวมทั้งสิ้น:* *${total}* / ${maxPossibleScore} คะแนน (${pct}%)\n` +
+        `🎓 *เกรดเฉลี่ยที่ได้:* 🎖️ *${finalGrade}*\n\n` +
+        `_ส่งโดยระบบจัดการชั้นเรียนของคุณครู ${currentTeacher.name}_`;
+
+      const success = await sendTelegramMessage(currentTeacher.telegramBotToken, student.parentTelegramChatId!, message);
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    setIsSendingTelegram(false);
+    alert(`ส่งสรุปเกรดสำเร็จ: ${successCount} รายการ${failCount > 0 ? `, ล้มเหลว: ${failCount} รายการ` : ""}`);
+  };
+
   const handleExport = () => {
     const data = classroomStudents.map(s => {
       const row: any = {
@@ -289,6 +335,15 @@ export function GradesTab({ classroomId }: GradesTabProps) {
             <Upload className="h-3.5 w-3.5 mr-1" />
             {language === "th" ? "นำเข้าคะแนน" : "Import Scores"}
           </Button> */}
+          <Button 
+            onClick={handleSendTelegramGrades} 
+            disabled={isSendingTelegram}
+            size="sm" 
+            className="h-8 text-xs font-bold shadow-sm bg-sky-600 hover:bg-sky-700 text-white"
+          >
+            <Send className="h-3.5 w-3.5 mr-1" />
+            {isSendingTelegram ? "กำลังส่ง..." : (language === "th" ? "ส่งเกรดเข้า Telegram" : "Send Grades to Telegram")}
+          </Button>
           <Button 
             variant="outline" 
             size="sm" 

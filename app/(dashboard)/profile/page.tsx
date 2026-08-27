@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useApp } from "@/lib/AppContext";
-import { User, Mail, School, Save, Check, Upload, Trash2 } from "lucide-react";
+import { User, Mail, School, Save, Check, Upload, Trash2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [email, setEmail] = useState("");
   const [school, setSchool] = useState("");
   const [avatar, setAvatar] = useState("");
+  const [telegramBotToken, setTelegramBotToken] = useState("");
   const [saved, setSaved] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -25,6 +26,7 @@ export default function ProfilePage() {
       setEmail(currentTeacher.email);
       setSchool(currentTeacher.school);
       setAvatar(currentTeacher.avatar || "");
+      setTelegramBotToken(currentTeacher.telegramBotToken || "");
     }
   }, [currentTeacher]);
 
@@ -67,7 +69,7 @@ export default function ProfilePage() {
     e.preventDefault();
     if (!name || !email || !school) return;
 
-    updateProfile(name, email, school, avatar || undefined);
+    updateProfile(name, email, school, avatar || undefined, telegramBotToken);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -187,6 +189,25 @@ export default function ProfilePage() {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-muted-foreground uppercase">
+                  Telegram Bot Token (สำหรับส่งแจ้งเตือนหาผู้ปกครอง)
+                </Label>
+                <div className="relative">
+                  <Send className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground z-10" />
+                  <Input
+                    type="text"
+                    className="pl-9"
+                    placeholder="เช่น 123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
+                    value={telegramBotToken}
+                    onChange={(e) => setTelegramBotToken(e.target.value)}
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  * สร้างบอทได้ที่ Telegram ค้นหาบอท <strong>@BotFather</strong> พิมพ์ /newbot เพื่อรับ Token
+                </p>
               </div>
 
               <div className="pt-4 flex items-center justify-between gap-4">

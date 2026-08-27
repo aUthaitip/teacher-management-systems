@@ -11,6 +11,7 @@ export interface Teacher {
   email: string;
   school: string;
   avatar?: string;
+  telegramBotToken?: string;
 }
 
 export interface Subject {
@@ -34,6 +35,8 @@ export interface Student {
   name: string;
   rollNumber: string;
   classroomId: string;
+  parentTelegramChatId?: string;
+  parentTelegramName?: string;
 }
 
 export interface AttendanceRecord {
@@ -68,7 +71,7 @@ interface AppContextType {
   loginTeacher: (email: string, password: string) => Promise<boolean>;
   registerTeacher: (name: string, email: string, school: string, password: string) => Promise<boolean>;
   logoutTeacher: () => void;
-  updateProfile: (name: string, email: string, school: string, avatar?: string) => Promise<void>;
+  updateProfile: (name: string, email: string, school: string, avatar?: string, telegramBotToken?: string) => Promise<void>;
   deleteTeacher: (id: string) => Promise<void>;
   
   // Subject Actions
@@ -83,9 +86,9 @@ interface AppContextType {
   deleteClassroom: (id: string) => void;
 
   // Student Actions
-  addStudent: (name: string, rollNumber: string, classroomId: string) => void;
-  addStudentsBatch: (students: { name: string; rollNumber: string }[], classroomId: string) => void;
-  updateStudent: (id: string, name: string, rollNumber: string) => void;
+  addStudent: (name: string, rollNumber: string, classroomId: string, parentTelegramChatId?: string, parentTelegramName?: string) => void;
+  addStudentsBatch: (students: { name: string; rollNumber: string; parentTelegramChatId?: string; parentTelegramName?: string }[], classroomId: string) => void;
+  updateStudent: (id: string, name: string, rollNumber: string, parentTelegramChatId?: string, parentTelegramName?: string) => void;
   deleteStudent: (id: string) => void;
 
   // Attendance Actions
@@ -301,15 +304,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("tms_currentTeacher");
   };
 
-  const updateProfile = async (name: string, email: string, school: string, avatar?: string): Promise<void> => {
+  const updateProfile = async (name: string, email: string, school: string, avatar?: string, telegramBotToken?: string): Promise<void> => {
     if (!currentTeacher) return;
     try {
       // อัปเดตใน Firestore
       const teacherRef = doc(db, "users", currentTeacher.id);
-      await updateDoc(teacherRef, { name, email, school, ...(avatar !== undefined && { avatar }) });
+      await updateDoc(teacherRef, { 
+        name, 
+        email, 
+        school, 
+        ...(avatar !== undefined && { avatar }),
+        ...(telegramBotToken !== undefined && { telegramBotToken })
+      });
 
       // อัปเดต local state
-      const updated = { ...currentTeacher, name, email, school, avatar };
+      const updated = { ...currentTeacher, name, email, school, avatar, telegramBotToken };
       setCurrentTeacher(updated);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -408,28 +417,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Student Actions
-  const addStudent = (name: string, rollNumber: string, classroomId: string) => {
+  const addStudent = (name: string, rollNumber: string, classroomId: string, parentTelegramChatId?: string, parentTelegramName?: string) => {
     const newStudent: Student = {
       id: `stud-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name,
       rollNumber,
       classroomId,
+      parentTelegramChatId,
+      parentTelegramName,
     };
     setStudents(prev => [...prev, newStudent]);
   };
 
-  const addStudentsBatch = (batch: { name: string; rollNumber: string }[], classroomId: string) => {
+  const addStudentsBatch = (batch: { name: string; rollNumber: string; parentTelegramChatId?: string; parentTelegramName?: string }[], classroomId: string) => {
     const newStudents: Student[] = batch.map(b => ({
       id: `stud-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: b.name,
       rollNumber: b.rollNumber,
       classroomId,
+      parentTelegramChatId: b.parentTelegramChatId,
+      parentTelegramName: b.parentTelegramName,
     }));
     setStudents(prev => [...prev, ...newStudents]);
   };
 
-  const updateStudent = (id: string, name: string, rollNumber: string) => {
-    setStudents(prev => prev.map(s => s.id === id ? { ...s, name, rollNumber } : s));
+  const updateStudent = (id: string, name: string, rollNumber: string, parentTelegramChatId?: string, parentTelegramName?: string) => {
+    setStudents(prev => prev.map(s => s.id === id ? { ...s, name, rollNumber, parentTelegramChatId, parentTelegramName } : s));
   };
 
   const deleteStudent = (id: string) => {
