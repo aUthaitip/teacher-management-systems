@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "@/lib/AppContext";
 import { useLanguage } from "@/lib/LanguageContext";
-import { Plus, Trash2, Award, Save, Check, XCircle, Send } from "lucide-react";
+import { Plus, Trash2, Award, Save, Check, XCircle, Send, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -36,6 +36,7 @@ export function ScoresTab({ classroomId }: ScoresTabProps) {
     scores, 
     addScoreChapter, 
     updateStudentScores, 
+    updateScoreChapter,
     deleteScoreChapter,
     currentTeacher,
     isLoaded 
@@ -49,6 +50,13 @@ export function ScoresTab({ classroomId }: ScoresTabProps) {
   const [newChapterName, setNewChapterName] = useState("");
   const [newTotalScore, setNewTotalScore] = useState<number>(100);
   const [newPassingScore, setNewPassingScore] = useState<number>(60);
+
+  // Edit chapter states
+  const [isEditChapterModalOpen, setIsEditChapterModalOpen] = useState(false);
+  const [editChapterName, setEditChapterName] = useState("");
+  const [editTotalScore, setEditTotalScore] = useState<number>(100);
+  const [editPassingScore, setEditPassingScore] = useState<number>(60);
+
   const [currentChapterScores, setCurrentChapterScores] = useState<{ [studentId: string]: number }>({});
   const [scoreErrors, setScoreErrors] = useState<{ [studentId: string]: string }>({});
 
@@ -85,6 +93,22 @@ export function ScoresTab({ classroomId }: ScoresTabProps) {
     setNewTotalScore(100);
     setNewPassingScore(60);
     setIsChapterModalOpen(false);
+  };
+
+  const handleOpenEditModal = () => {
+    if (!currentChapter) return;
+    setEditChapterName(currentChapter.chapterName);
+    setEditTotalScore(currentChapter.totalScore);
+    setEditPassingScore(currentChapter.passingScore);
+    setIsEditChapterModalOpen(true);
+  };
+
+  const handleEditChapter = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentChapter || !editChapterName || editTotalScore <= 0 || editPassingScore <= 0) return;
+
+    updateScoreChapter(currentChapter.id, editChapterName, editTotalScore, editPassingScore);
+    setIsEditChapterModalOpen(false);
   };
 
   const handleScoreChange = (studentId: string, val: string, maxScore: number) => {
@@ -183,20 +207,91 @@ export function ScoresTab({ classroomId }: ScoresTabProps) {
 
         <div className="flex items-center gap-2">
           {currentChapter && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => {
-                if(confirm("คุณต้องการลบแบบทดสอบนี้ใช่หรือไม่? คะแนนทั้งหมดจะหายไป")) {
-                  deleteScoreChapter(currentChapter.id);
-                  setSelectedChapterId("");
-                }
-              }}
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive font-bold text-xs"
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              {t("deleteChapterBtn")}
-            </Button>
+            <>
+              <Dialog open={isEditChapterModalOpen} onOpenChange={setIsEditChapterModalOpen}>
+                <DialogTrigger 
+                  onClick={handleOpenEditModal}
+                  className="flex h-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/10 transition-colors cursor-pointer shadow-sm"
+                >
+                  <Edit className="h-4 w-4 mr-1" />
+                  แก้ไขบทเรียน
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                      <Award className="h-5 w-5" />
+                      แก้ไขบทเรียน/การประเมิน
+                    </DialogTitle>
+                    <DialogDescription>
+                      ปรับเปลี่ยนข้อมูลชื่อบทเรียน คะแนนเต็ม หรือเกณฑ์ผ่านสำหรับการประเมินนี้
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleEditChapter} className="space-y-4 py-2">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground uppercase">{t("chapterName") || "ชื่อการประเมิน"}</label>
+                      <Input
+                        placeholder={t("chapterNamePl")}
+                        value={editChapterName}
+                        onChange={(e) => setEditChapterName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">{t("totalScoreLabel")}</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={editTotalScore}
+                          onChange={(e) => {
+                            setEditTotalScore(Number(e.target.value));
+                            setEditPassingScore(Math.ceil(Number(e.target.value) * 0.6));
+                          }}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground uppercase">{t("passingScoreLabel")}</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={editPassingScore}
+                          onChange={(e) => setEditPassingScore(Number(e.target.value))}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter className="pt-4 gap-2">
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setIsEditChapterModalOpen(false)}
+                      >
+                        {t("cancel")}
+                      </Button>
+                      <Button type="submit">
+                        {t("save")}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  if(confirm("คุณต้องการลบแบบทดสอบนี้ใช่หรือไม่? คะแนนทั้งหมดจะหายไป")) {
+                    deleteScoreChapter(currentChapter.id);
+                    setSelectedChapterId("");
+                  }
+                }}
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive font-bold text-xs"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                {t("deleteChapterBtn")}
+              </Button>
+            </>
           )}
 
           <Dialog open={isChapterModalOpen} onOpenChange={setIsChapterModalOpen}>

@@ -97,6 +97,7 @@ interface AppContextType {
   // Score Actions
   addScoreChapter: (chapterName: string, totalScore: number, passingScore: number, classroomId: string) => void;
   updateStudentScores: (chapterId: string, studentScores: { [studentId: string]: number }) => void;
+  updateScoreChapter: (chapterId: string, chapterName: string, totalScore: number, passingScore: number) => void;
   deleteScoreChapter: (chapterId: string) => void;
 }
 
@@ -495,6 +496,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setScores(prev => prev.map(s => s.id === chapterId ? { ...s, studentScores } : s));
   };
 
+  const updateScoreChapter = (chapterId: string, chapterName: string, totalScore: number, passingScore: number) => {
+    setScores(prev => prev.map(s => s.id === chapterId ? { ...s, chapterName, totalScore, passingScore } : s));
+  };
+
   const deleteScoreChapter = (chapterId: string) => {
     setScores(prev => prev.filter(s => s.id !== chapterId));
   };
@@ -529,6 +534,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         saveAttendance,
         addScoreChapter,
         updateStudentScores,
+        updateScoreChapter,
         deleteScoreChapter,
       }}
     >
