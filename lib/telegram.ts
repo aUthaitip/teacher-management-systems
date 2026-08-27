@@ -20,20 +20,15 @@ export interface TelegramUpdate {
 }
 
 export async function getTelegramUpdates(token: string): Promise<TelegramUpdate[]> {
-  try {
-    const response = await fetch(`https://api.telegram.org/bot${token}/getUpdates?timeout=1`);
-    if (!response.ok) {
-      throw new Error(`Telegram API error: ${response.statusText}`);
-    }
-    const data = await response.json();
-    if (data.ok) {
-      return data.result as TelegramUpdate[];
-    }
-    return [];
-  } catch (error) {
-    console.error("Failed to fetch Telegram updates:", error);
-    return [];
+  const response = await fetch(`https://api.telegram.org/bot${token}/getUpdates?timeout=1`);
+  if (!response.ok) {
+    throw new Error(`Telegram API error: ${response.status} ${response.statusText}`);
   }
+  const data = await response.json();
+  if (data.ok) {
+    return data.result as TelegramUpdate[];
+  }
+  throw new Error(data.description || "Failed to fetch updates");
 }
 
 export async function sendTelegramMessage(token: string, chatId: string, text: string): Promise<boolean> {

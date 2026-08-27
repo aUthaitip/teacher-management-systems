@@ -126,7 +126,8 @@ export function StudentsTab({ classroomId }: StudentsTabProps) {
     }
     setIsFetchingTelegram(true);
     try {
-      const updates = await getTelegramUpdates(currentTeacher.telegramBotToken);
+      const cleanToken = currentTeacher.telegramBotToken.trim();
+      const updates = await getTelegramUpdates(cleanToken);
       // Filter updates that have a private message with text
       const msgUpdates = updates.filter(u => u.message && u.message.chat.type === "private" && u.message.text);
       setTelegramUpdates(msgUpdates);
@@ -152,6 +153,7 @@ export function StudentsTab({ classroomId }: StudentsTabProps) {
       setMappedMatches(newMatches);
     } catch (error) {
       console.error(error);
+      alert("ไม่สามารถดึงข้อมูลจาก Telegram ได้: " + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsFetchingTelegram(false);
     }
