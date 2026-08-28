@@ -32,23 +32,51 @@ export default function AdminPage() {
   const [firebaseTeachers, setFirebaseTeachers] = useState<FirebaseUser[]>([]);
   const [loadingFirebase, setLoadingFirebase] = useState(true);
 
+  // Admin Auth State
+  const [isAdminAuth, setIsAdminAuth] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminError, setAdminError] = useState("");
+  const [authChecked, setAuthChecked] = useState(false);
+
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "users"));
-        const usersList: FirebaseUser[] = [];
-        querySnapshot.forEach((docSnap) => {
-          usersList.push({ id: docSnap.id, ...docSnap.data() } as FirebaseUser);
-        });
-        setFirebaseTeachers(usersList);
-      } catch (err) {
-        console.error("Error fetching users from Firebase:", err);
-      } finally {
-        setLoadingFirebase(false);
-      }
-    };
-    fetchUsers();
+    if (typeof window !== "undefined") {
+      const isAuth = sessionStorage.getItem("adminAuth") === "true";
+      setIsAdminAuth(isAuth);
+      setAuthChecked(true);
+    }
   }, []);
+
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminEmail === "Admin@gmail.com" && adminPassword === "123456789") {
+      sessionStorage.setItem("adminAuth", "true");
+      setIsAdminAuth(true);
+      setAdminError("");
+    } else {
+      setAdminError(language === "th" ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" : "Invalid email or password");
+    }
+  };
+
+  useEffect(() => {
+    if (isAdminAuth) {
+      const fetchUsers = async () => {
+        try {
+          const querySnapshot = await getDocs(collection(db, "users"));
+          const usersList: FirebaseUser[] = [];
+          querySnapshot.forEach((docSnap) => {
+            usersList.push({ id: docSnap.id, ...docSnap.data() } as FirebaseUser);
+          });
+          setFirebaseTeachers(usersList);
+        } catch (err) {
+          console.error("Error fetching users from Firebase:", err);
+        } finally {
+          setLoadingFirebase(false);
+        }
+      };
+      fetchUsers();
+    }
+  }, [isAdminAuth]);
 
   const handleDeleteTeacher = async (id: string, name: string) => {
     const confirmText = language === "th"
@@ -66,10 +94,73 @@ export default function AdminPage() {
     }
   };
 
-  if (!isLoaded) {
+  if (!isLoaded || !authChecked) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
         <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAdminAuth) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden text-black selection:bg-primary selection:text-white">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e4e4e7_1px,transparent_1px),linear-gradient(to_bottom,#e4e4e7_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-50 pointer-events-none"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl opacity-30 pointer-events-none"></div>
+
+        <div className="relative z-10 w-full max-w-md px-4">
+          <div className="text-center mb-8">
+            <div className="bg-primary text-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/30">
+              <ShieldCheck className="h-8 w-8" />
+            </div>
+            <h1 className="text-3xl font-black tracking-tight">Admin Area</h1>
+            <p className="text-muted-foreground mt-2">Restricted Access. Please login to continue.</p>
+          </div>
+
+          <Card className="border-border/50 shadow-xl shadow-black/5 bg-white">
+            <CardContent className="pt-6">
+              <form onSubmit={handleAdminLogin} className="space-y-4">
+                {adminError && (
+                  <div className="bg-rose-50 text-rose-600 border border-rose-200 text-sm p-3 rounded-lg text-center font-bold">
+                    {adminError}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    placeholder="Admin@gmail.com"
+                    className="w-full p-3 bg-card border border-border/60 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="•••••••••"
+                    className="w-full p-3 bg-card border border-border/60 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  />
+                </div>
+                <Button type="submit" className="w-full py-6 text-md font-bold rounded-xl mt-4 bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 transition-all">
+                  Login to Admin
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+          
+          <div className="text-center mt-6">
+            <Link href="/" className="text-sm font-bold text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1">
+              <ArrowLeft className="h-4 w-4" />
+              Return to Home
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

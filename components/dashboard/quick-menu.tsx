@@ -6,51 +6,54 @@ export function QuickMenu({ t }: { t: (k: string) => string }) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-black text-foreground tracking-tight">
-        {t("quickMenu")}
+        {t("quickMenu") || "Quick Menu"}
       </h2>
       
-      <div className="bg-card p-5 rounded-xl border shadow-sm space-y-4">
-        <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/40 transition-colors">
-          <div className="p-2 bg-primary/10 text-primary rounded-lg">
+      <div className="bg-card p-4 rounded-2xl border border-border/50 shadow-sm space-y-3">
+        <div className="group relative flex items-center gap-4 p-3.5 rounded-xl hover:bg-muted/50 transition-all duration-300 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative p-2.5 bg-primary/10 text-primary rounded-xl group-hover:scale-110 transition-transform duration-300">
             <BookOpen className="h-5 w-5" />
           </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-bold text-foreground">{t("quickManageSubjects")}</h4>
-            <p className="text-xs text-muted-foreground truncate">{t("quickManageSubjectsDesc")}</p>
+          <div className="relative flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">{t("quickManageSubjects") || "Manage Subjects"}</h4>
+            <p className="text-xs text-muted-foreground truncate">{t("quickManageSubjectsDesc") || "Add, edit or delete subjects"}</p>
           </div>
-          <Link href="/subjects">
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground">
-              <ChevronRight className="h-4 w-4" />
+          <Link href="/subjects" className="relative">
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all">
+              <ChevronRight className="h-5 w-5" />
             </Button>
           </Link>
         </div>
 
-        <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/40 transition-colors">
-          <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+        <div className="group relative flex items-center gap-4 p-3.5 rounded-xl hover:bg-muted/50 transition-all duration-300 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative p-2.5 bg-indigo-50 text-indigo-600 rounded-xl group-hover:scale-110 transition-transform duration-300">
             <CalendarDays className="h-5 w-5" />
           </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-bold text-foreground">{t("quickAttendance")}</h4>
-            <p className="text-xs text-muted-foreground truncate">{t("quickAttendanceDesc")}</p>
+          <div className="relative flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-foreground group-hover:text-indigo-600 transition-colors">{t("quickAttendance") || "Check Attendance"}</h4>
+            <p className="text-xs text-muted-foreground truncate">{t("quickAttendanceDesc") || "Record daily presence"}</p>
           </div>
-          <Link href="/subjects">
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground">
-              <ChevronRight className="h-4 w-4" />
+          <Link href="/subjects" className="relative">
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground group-hover:text-indigo-600 group-hover:translate-x-1 transition-all">
+              <ChevronRight className="h-5 w-5" />
             </Button>
           </Link>
         </div>
 
-        <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/40 transition-colors">
-          <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+        <div className="group relative flex items-center gap-4 p-3.5 rounded-xl hover:bg-muted/50 transition-all duration-300 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="relative p-2.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:scale-110 transition-transform duration-300">
             <Award className="h-5 w-5" />
           </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-bold text-foreground">{t("quickScores")}</h4>
-            <p className="text-xs text-muted-foreground truncate">{t("quickScoresDesc")}</p>
+          <div className="relative flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-foreground group-hover:text-emerald-600 transition-colors">{t("quickScores") || "Manage Scores"}</h4>
+            <p className="text-xs text-muted-foreground truncate">{t("quickScoresDesc") || "Record grades and results"}</p>
           </div>
-          <Link href="/subjects">
-            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground">
-              <ChevronRight className="h-4 w-4" />
+          <Link href="/subjects" className="relative">
+            <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground group-hover:text-emerald-600 group-hover:translate-x-1 transition-all">
+              <ChevronRight className="h-5 w-5" />
             </Button>
           </Link>
         </div>

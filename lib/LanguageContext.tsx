@@ -75,7 +75,7 @@ const translations: TranslationDictionary = {
   systemSubtitle: { th: "ระบบจัดการชั้นเรียน", en: "Classroom System" },
 
   // Dashboard Page
-  welcomeBack: { th: "ยินดีต้อนรับกลับมา", en: "Welcome Back" },
+  welcomeBack: { th: "ยินดีต้อนรับ", en: "Welcome" },
   hello: { th: "สวัสดี", en: "Hello" },
   bannerDesc: { th: "ระบบจัดการห้องเรียนพร้อมใช้งานแล้ว วันนี้คุณอยากจัดการห้องเรียนวิชาอะไรดีครับ?", en: "Classroom management system is ready. What classroom would you like to manage today?" },
   totalSubjects: { th: "รายวิชาทั้งหมด", en: "Total Subjects" },
