@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useApp } from "@/lib/AppContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import Link from "next/link";
-import { GraduationCap, ArrowLeft, Users, BookOpen, ShieldCheck, Globe, Trash2 } from "lucide-react";
+import { GraduationCap, ArrowLeft, Users, BookOpen, ShieldCheck, Globe, Trash2, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -56,6 +56,10 @@ export default function AdminPage() {
     } else {
       setAdminError(language === "th" ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" : "Invalid email or password");
     }
+  };
+  const handleAdminLogout = () => {
+    sessionStorage.removeItem("adminAuth");
+    setIsAdminAuth(false);
   };
 
   useEffect(() => {
@@ -153,7 +157,7 @@ export default function AdminPage() {
               </form>
             </CardContent>
           </Card>
-          
+
           <div className="text-center mt-6">
             <Link href="/" className="text-sm font-bold text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-1">
               <ArrowLeft className="h-4 w-4" />
@@ -204,6 +208,15 @@ export default function AdminPage() {
                 {language === "th" ? "กลับหน้าครูผู้สอน" : "Back to Teacher View"}
               </Button>
             </Link>
+            {/* Admin Logout Button */}
+            <Button
+              variant="destructive"
+              onClick={handleAdminLogout}
+              className="flex items-center gap-1.5 h-9 rounded-lg cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" />
+              {language === "th" ? "ออกจากระบบ" : "Logout"}
+            </Button>
           </div>
         </div>
       </header>
@@ -215,8 +228,8 @@ export default function AdminPage() {
             {language === "th" ? "แดชบอร์ดผู้ดูแลระบบ" : "Admin Dashboard"}
           </h2>
           <p className="text-muted-foreground mt-1">
-            {language === "th" 
-              ? "ข้อมูลผู้ลงใช้งานจริงทั้งหมดในเครื่องเบราว์เซอร์นี้" 
+            {language === "th"
+              ? "ข้อมูลผู้ลงใช้งานจริงทั้งหมดในเครื่องเบราว์เซอร์นี้"
               : "Active configuration and analytics parsed from live client database."}
           </p>
         </div>
@@ -247,29 +260,29 @@ export default function AdminPage() {
                 <h4 className="text-xs font-bold text-muted-foreground uppercase">
                   {language === "th" ? "วิชาเรียนทั้งหมดในระบบ" : "Total System Subjects"}
                 </h4>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="text-[10px] h-6 py-0 px-2 w-fit text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-100 mt-1"
                   onClick={() => {
                     const confirmMsg = language === "th" ? "ต้องการลบข้อมูลวิชาและห้องเรียนที่ตกค้างจากครูที่ถูกลบไปแล้วใช่หรือไม่?" : "Are you sure you want to clear orphaned subjects and classrooms?";
                     if (window.confirm(confirmMsg)) {
                       const validTeacherIds = new Set(firebaseTeachers.map(t => t.id));
-                      
+
                       const lsSubjects = JSON.parse(localStorage.getItem("tms_subjects") || "[]");
                       const cleanSubjects = lsSubjects.filter((s: any) => s.teacherIds.some((id: string) => validTeacherIds.has(id)));
                       localStorage.setItem("tms_subjects", JSON.stringify(cleanSubjects));
-                      
+
                       const lsClassrooms = JSON.parse(localStorage.getItem("tms_classrooms") || "[]");
                       const cleanSubjIds = new Set(cleanSubjects.map((s: any) => s.id));
                       const cleanClassrooms = lsClassrooms.filter((c: any) => cleanSubjIds.has(c.subjectId));
                       localStorage.setItem("tms_classrooms", JSON.stringify(cleanClassrooms));
-                      
+
                       const lsStudents = JSON.parse(localStorage.getItem("tms_students") || "[]");
                       const cleanClassIds = new Set(cleanClassrooms.map((c: any) => c.id));
                       const cleanStudents = lsStudents.filter((st: any) => cleanClassIds.has(st.classroomId));
                       localStorage.setItem("tms_students", JSON.stringify(cleanStudents));
-                      
+
                       window.location.reload();
                     }
                   }}
@@ -312,8 +325,8 @@ export default function AdminPage() {
               {language === "th" ? "ข้อมูลคุณครูและประวัติจริงในระบบ" : "Live Teacher Registry Audits"}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground mt-0.5">
-              {language === "th" 
-                ? "แสดงรายชื่อและสถิติวิชา/ห้องเรียนที่ครูแต่ละคนกำลังใช้งานจริง" 
+              {language === "th"
+                ? "แสดงรายชื่อและสถิติวิชา/ห้องเรียนที่ครูแต่ละคนกำลังใช้งานจริง"
                 : "Active statistics of subjects, classrooms, and relational database objects per registered account."}
             </CardDescription>
           </CardHeader>
@@ -365,7 +378,7 @@ export default function AdminPage() {
                       <TableCell className="text-center font-bold text-sm px-6 py-4">{teacherSubjects.length}</TableCell>
                       <TableCell className="text-center font-bold text-sm px-6 py-4">{teacherClassrooms.length}</TableCell>
                       <TableCell className="text-center font-bold text-sm px-6 py-4">{teacherStudents.length}</TableCell>
-                      
+
                       <TableCell className="px-6 py-4 text-right">
                         <Button
                           variant="ghost"
