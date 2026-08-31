@@ -225,14 +225,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Debounce or save directly
         const syncToFirebase = async () => {
           try {
-            await setDoc(doc(db, "teacher_data", currentTeacher.id), {
+            const payload = JSON.parse(JSON.stringify({
               subjects,
               classrooms,
               students,
               attendance,
               scores,
               updatedAt: new Date().toISOString()
-            });
+            }));
+            await setDoc(doc(db, "teacher_data", currentTeacher.id), payload);
           } catch (error) {
             console.error("Error syncing to Firebase:", error);
           }
