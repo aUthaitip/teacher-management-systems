@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "@/lib/AppContext";
 import { useLanguage } from "@/lib/LanguageContext";
-import { Save, CalendarDays, CheckCircle, XCircle, Clock, Users } from "lucide-react";
+import { Save, CalendarDays, CheckCircle, XCircle, Clock, Users, Send } from "lucide-react";
+import { sendTelegramMessage } from "@/lib/telegram";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,10 +22,11 @@ interface AttendanceTabProps {
 }
 
 export function AttendanceTab({ classroomId }: AttendanceTabProps) {
-  const { students, attendance, saveAttendance, isLoaded } = useApp();
+  const { students, attendance, saveAttendance, isLoaded, currentTeacher, classrooms, subjects } = useApp();
   const { t } = useLanguage();
   const [attendanceDate, setAttendanceDate] = useState<string>("");
   const [attendanceRecords, setAttendanceRecords] = useState<{ [studentId: string]: { status: "present" | "absent" | "late", reason?: "leave_personal" | "leave_sick" | "no_show" } }>({});
+  const [isSendingTelegram, setIsSendingTelegram] = useState(false);
 
   const classroomStudents = students
     .filter((s) => s.classroomId === classroomId)
@@ -70,6 +72,58 @@ export function AttendanceTab({ classroomId }: AttendanceTabProps) {
     alert(t("attendanceSavedAlert"));
   };
 
+  const handleSendTelegramNotifications = async () => {
+    if (!currentTeacher?.telegramBotToken) {
+      alert("กรุณาตั้งค่า Telegram Bot Token ในหน้าโปรไฟล์ของคุณก่อน");
+      return;
+    }
+
+    const connectedStudents = classroomStudents.filter(s => s.parentTelegramChatId);
+    if (connectedStudents.length === 0) {
+      alert("ไม่มีนักเรียนที่เชื่อมต่อ Telegram ของผู้ปกครองในห้องเรียนนี้");
+      return;
+    }
+
+    if (!confirm(`คุณต้องการส่งแจ้งเตือนการเข้าเรียน ไปยังผู้ปกครองที่เชื่อมต่อแล้วจำนวน ${connectedStudents.length} คน ใช่หรือไม่?`)) {
+      return;
+    }
+
+    setIsSendingTelegram(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    const classroom = classrooms.find(c => c.id === classroomId);
+    const subject = subjects.find(s => s.id === classroom?.subjectId);
+
+    for (const student of connectedStudents) {
+      const record = attendanceRecords[student.id];
+      const status = record?.status || "present";
+      
+      const statusText = status === 'present' ? '✅ มาเรียน' : status === 'late' ? '⚠️ มาสาย' : '❌ ขาดเรียน';
+      let reasonText = '';
+      if (status === 'absent' && record?.reason) {
+         reasonText = record.reason === 'leave_personal' ? '(ลากิจ)' : record.reason === 'leave_sick' ? '(ลาป่วย)' : '(ไม่ทราบสาเหตุ)';
+      }
+      
+      const message = `🔔 *แจ้งเตือนการเข้าเรียน*\n\n` +
+                      `👤 *นักเรียน:* ${student.name} (เลขที่ ${student.rollNumber})\n` +
+                      `📅 *วันที่:* ${attendanceDate}\n` +
+                      `📝 *วิชา:* ${subject?.name || 'ไม่ระบุ'} (${classroom?.name || 'ไม่ระบุ'})\n` +
+                      `📊 *สถานะ:* ${statusText} ${reasonText}\n\n` +
+                      `_ส่งโดยระบบจัดการชั้นเรียนของคุณครู ${currentTeacher.name}_`;
+
+      const success = await sendTelegramMessage(currentTeacher.telegramBotToken, student.parentTelegramChatId!, message);
+      if (success) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    setIsSendingTelegram(false);
+    alert(`ส่งข้อความสำเร็จ: ${successCount} รายการ${failCount > 0 ? `, ล้มเหลว: ${failCount} รายการ` : ""}`);
+  };
+
   if (!isLoaded) return null;
 
   return (
@@ -89,6 +143,23 @@ export function AttendanceTab({ classroomId }: AttendanceTabProps) {
           <Button onClick={handleSave} className="flex items-center gap-1.5 text-sm h-8 cursor-pointer">
             <Save className="h-4 w-4" />
             {t("saveAttendance")}
+          </Button>
+          <Button 
+            onClick={handleSendTelegramNotifications} 
+            disabled={isSendingTelegram}
+            className="h-8 text-xs font-bold shadow-sm bg-sky-600 hover:bg-sky-700 text-white"
+          >
+            {isSendingTelegram ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                กำลังส่ง...
+              </span>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                แจ้งผู้ปกครอง
+              </>
+            )}
           </Button>
         </div>
       </CardHeader>
