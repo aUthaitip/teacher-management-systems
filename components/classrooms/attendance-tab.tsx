@@ -99,6 +99,7 @@ export function AttendanceTab({ classroomId }: AttendanceTabProps) {
       const record = attendanceRecords[student.id];
       const status = record?.status || "present";
       
+      
       const statusText = status === 'present' ? '✅ มาเรียน' : status === 'late' ? '⚠️ มาสาย' : '❌ ขาดเรียน';
       let reasonText = '';
       if (status === 'absent' && record?.reason) {

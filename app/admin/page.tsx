@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, setDoc } from "firebase/firestore";
 
 interface FirebaseUser {
   id: string;
@@ -264,7 +264,7 @@ export default function AdminPage() {
                   variant="outline"
                   size="sm"
                   className="text-[10px] h-6 py-0 px-2 w-fit text-rose-500 hover:text-rose-600 hover:bg-rose-50 border-rose-100 mt-1"
-                  onClick={() => {
+                  onClick={async () => {
                     const confirmMsg = language === "th" ? "ต้องการลบข้อมูลวิชาและห้องเรียนที่ตกค้างจากครูที่ถูกลบไปแล้วใช่หรือไม่?" : "Are you sure you want to clear orphaned subjects and classrooms?";
                     if (window.confirm(confirmMsg)) {
                       const validTeacherIds = new Set(firebaseTeachers.map(t => t.id));
@@ -282,6 +282,19 @@ export default function AdminPage() {
                       const cleanClassIds = new Set(cleanClassrooms.map((c: any) => c.id));
                       const cleanStudents = lsStudents.filter((st: any) => cleanClassIds.has(st.classroomId));
                       localStorage.setItem("tms_students", JSON.stringify(cleanStudents));
+
+                      if (currentTeacher) {
+                        try {
+                          await setDoc(doc(db, "teacher_data", currentTeacher.id), {
+                            subjects: cleanSubjects,
+                            classrooms: cleanClassrooms,
+                            students: cleanStudents,
+                            updatedAt: new Date().toISOString()
+                          }, { merge: true });
+                        } catch (err) {
+                          console.error("Failed to sync clean data to Firebase", err);
+                        }
+                      }
 
                       window.location.reload();
                     }
